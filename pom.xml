@@ -5,7 +5,7 @@
   <version>6.0.0.1</version>
   <name>Residence</name>
   
-  
+  /test
 	<properties>
 		<maven.compiler.source>1.8</maven.compiler.source>
 		<maven.compiler.target>1.8</maven.compiler.target>
