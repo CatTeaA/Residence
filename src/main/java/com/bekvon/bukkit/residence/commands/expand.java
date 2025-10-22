@@ -43,16 +43,13 @@ public class expand implements cmd {
                     res = plugin.getResidenceManager().getByLoc(loc);
             }
 
-            if (amount == -1) {
-                try {
-                    amount = Integer.parseInt(one);
-                    continue;
-                } catch (NumberFormatException e) {
-                }
+            try {
+                amount = Integer.parseInt(one);
+            } catch (NumberFormatException e) {
             }
         }
 
-        if (res == null)
+        if (res == null || args.length <= 1)
             res = plugin.getResidenceManager().getByLoc(loc);
 
         if (res == null) {
@@ -83,8 +80,7 @@ public class expand implements cmd {
             return false;
         }
 
-        plugin.getSelectionManager().placeLoc1(player, area.getHighLocation(), false);
-        plugin.getSelectionManager().placeLoc2(player, area.getLowLocation(), false);
+        plugin.getSelectionManager().placeLoc(player, area.getHighLocation(), area.getLowLocation(), false);
 
         amount = CMINumber.clamp(amount, 1, Integer.MAX_VALUE);
 
@@ -94,8 +90,6 @@ public class expand implements cmd {
             if (plugin.getWorldEdit() != null && plugin.getWorldEditTool().equals(plugin.getConfigManager().getSelectionTool())) {
                 plugin.getSelectionManager().worldEdit(player);
             }
-
-            CMIDebug.d(plugin.getSelectionManager().getSelectionCuboid(player).getXSize(), plugin.getSelectionManager().getSelectionCuboid(player).getZSize());
 
             res.replaceArea(player, plugin.getSelectionManager().getSelectionCuboid(player), areaName, resadmin);
             return true;
