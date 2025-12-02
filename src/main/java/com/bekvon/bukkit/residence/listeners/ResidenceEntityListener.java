@@ -219,11 +219,16 @@ public class ResidenceEntityListener implements Listener {
         if (ResAdmin.isResAdmin(cause))
             return;
 
-        if (FlagPermissions.has(entity.getLocation(), cause, Flags.animalkilling, true))
+        ClaimedResidence res = plugin.getResidenceManager().getByLoc(entity.getLocation());
+
+        if (res == null)
             return;
 
-        lm.Flag_Deny.sendMessage(cause, Flags.animalkilling);
-        event.setCancelled(true);
+        if (res.getPermissions().playerHas(cause, Flags.animalkilling, FlagCombo.OnlyFalse)) {
+            lm.Residence_FlagDeny.sendMessage(cause, Flags.animalkilling, res.getName());
+            event.setCancelled(true);
+        }
+
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -430,11 +435,15 @@ public class ResidenceEntityListener implements Listener {
         if (ResAdmin.isResAdmin(cause))
             return;
 
-        if (FlagPermissions.has(entity.getLocation(), cause, Flags.mobkilling, true))
+        ClaimedResidence res = plugin.getResidenceManager().getByLoc(entity.getLocation());
+
+        if (res == null)
             return;
 
-        lm.Flag_Deny.sendMessage(cause, Flags.mobkilling);
-        event.setCancelled(true);
+        if (res.getPermissions().playerHas(cause, Flags.mobkilling, FlagCombo.OnlyFalse)) {
+            lm.Residence_FlagDeny.sendMessage(cause, Flags.mobkilling, res.getName());
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
