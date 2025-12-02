@@ -673,7 +673,7 @@ public class Residence extends JavaPlugin {
 
             if (getConfigManager().AutoMobRemoval())
                 despawnMobsBukkitId = CMIScheduler.scheduleSyncRepeatingTask(this, DespawnMobs, 20 * getConfigManager().AutoMobRemovalInterval(), 20
-                    * getConfigManager().AutoMobRemovalInterval());
+                        * getConfigManager().AutoMobRemovalInterval());
 
             if (getConfigManager().useLeases()) {
                 int leaseInterval = getConfigManager().getLeaseCheckInterval();
@@ -1016,7 +1016,8 @@ public class Residence extends JavaPlugin {
         for (Entry<String, Object> entry : save.entrySet()) {
 
             boolean emptyRecord = false;
-            // Not saving files without any records in them. Mainly for servers with many small temporary worlds
+            // Not saving files without any records in them. Mainly for servers with many
+            // small temporary worlds
             try {
                 emptyRecord = ((LinkedHashMap) entry.getValue()).isEmpty();
             } catch (Throwable e) {
@@ -1340,7 +1341,19 @@ public class Residence extends JavaPlugin {
         return getConfigManager().DisabledWorldsList.contains(worldname);
     }
 
+    public boolean isDisabledWorldListener(Location loc) {
+
+        if (loc == null)
+            return false;
+
+        return isDisabledWorldListener(loc.getWorld().getName());
+    }
+
     public boolean isDisabledWorldListener(World world) {
+
+        if (world == null)
+            return false;
+
         return isDisabledWorldListener(world.getName());
     }
 

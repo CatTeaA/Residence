@@ -44,6 +44,7 @@ import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.EntityInteractEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.entity.EntitySpawnEvent;
+import org.bukkit.event.entity.EntityTeleportEvent;
 import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.event.entity.PlayerLeashEntityEvent;
 import org.bukkit.event.entity.PotionSplashEvent;
@@ -87,6 +88,20 @@ public class ResidenceEntityListener implements Listener {
     }
 
     private final static String CrossbowShooter = "CrossbowShooter";
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onEndermanTeleport(EntityTeleportEvent event) {
+        // disabling event on world
+        if (plugin.isDisabledWorldListener(event.getTo()))
+            return;
+
+        if (event.getEntityType() != EntityType.ENDERMAN)
+            return;
+
+        FlagPermissions perms = FlagPermissions.getPerms(event.getTo());
+        if (perms.has(Flags.monsters, FlagCombo.OnlyFalse) || perms.has(Flags.nomobs, FlagCombo.OnlyTrue))
+            event.setCancelled(true);
+    }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onEndermanChangeBlock(EntityChangeBlockEvent event) {
@@ -1194,7 +1209,7 @@ public class ResidenceEntityListener implements Listener {
                         return;
                     ClaimedResidence srcarea = plugin.getResidenceManager().getByLoc(attacker.getLocation());
                     if (srcarea != null && area != null && srcarea.equals(area) && srcarea.getPermissions().playerHas((Player) target, Flags.friendlyfire, FlagCombo.OnlyFalse) &&
-                        srcarea.getPermissions().playerHas(attacker, Flags.friendlyfire, FlagCombo.OnlyFalse)) {
+                            srcarea.getPermissions().playerHas(attacker, Flags.friendlyfire, FlagCombo.OnlyFalse)) {
                         CMIActionBar.send(attacker, plugin.getLM().getMessage(lm.General_NoFriendlyFire));
                         event.setIntensity(target, 0);
                     }
@@ -1480,10 +1495,11 @@ public class ResidenceEntityListener implements Listener {
                     lm.Flag_Deny.sendMessage(player, Flags.container);
                 }
 
-                // Specific fix for the Itemadders plugin. 
-                // Custom event will not have damage source while it contains item as paper inside of it
+                // Specific fix for the Itemadders plugin.
+                // Custom event will not have damage source while it contains item as paper
+                // inside of it
                 if (Version.isCurrentEqualOrHigher(Version.v1_21_R1) && event.getDamageSource() != null && event.getDamageSource().getCausingEntity() == null && !perms.playerHas(player, Flags.destroy,
-                    perms.playerHas(player, Flags.build, true))) {
+                        perms.playerHas(player, Flags.build, true))) {
                     event.setCancelled(true);
                     lm.Flag_Deny.sendMessage(player, Flags.destroy);
                 }
@@ -1536,7 +1552,7 @@ public class ResidenceEntityListener implements Listener {
 
 //	    ent = attackevent.getEntity();
         if ((victim instanceof Player || tamedAnimal) && (damager instanceof Player || (damager instanceof Projectile && (((Projectile) damager)
-            .getShooter() instanceof Player))) || damager instanceof Firework) {
+                .getShooter() instanceof Player))) || damager instanceof Firework) {
 
             Player attacker = null;
             if (damager instanceof Player) {
@@ -1566,7 +1582,7 @@ public class ResidenceEntityListener implements Listener {
                 return true;
 
             if (srcarea != null && area != null && srcarea.equals(area) && attacker != null && area.getRaid().isUnderRaid() && area.getRaid().onSameTeam(attacker, (Player) victim)
-                && !ConfigManager.RaidFriendlyFire) {
+                    && !ConfigManager.RaidFriendlyFire) {
                 return false;
             }
 
@@ -1575,8 +1591,8 @@ public class ResidenceEntityListener implements Listener {
             }
 
             if (srcarea != null && area != null && srcarea.equals(area) && attacker != null &&
-                srcarea.getPermissions().playerHas((Player) victim, Flags.friendlyfire, FlagCombo.OnlyFalse) &&
-                srcarea.getPermissions().playerHas(attacker, Flags.friendlyfire, FlagCombo.OnlyFalse)) {
+                    srcarea.getPermissions().playerHas((Player) victim, Flags.friendlyfire, FlagCombo.OnlyFalse) &&
+                    srcarea.getPermissions().playerHas(attacker, Flags.friendlyfire, FlagCombo.OnlyFalse)) {
 
                 CMIActionBar.send(attacker, Residence.getInstance().getLM().getMessage(lm.General_NoFriendlyFire));
                 if (isOnFire)
@@ -1623,7 +1639,7 @@ public class ResidenceEntityListener implements Listener {
             return true;
         } else if ((victim instanceof Player || tamedAnimal) && (damager instanceof Creeper)) {
             if (area == null && !Residence.getInstance().getWorldFlags().getPerms(damager.getWorld().getName()).has(Flags.creeper, true) || area != null && !area.getPermissions().has(Flags.creeper,
-                true)) {
+                    true)) {
                 return false;
             }
         }
@@ -1668,7 +1684,7 @@ public class ResidenceEntityListener implements Listener {
 
             ent = attackevent.getEntity();
             if ((ent instanceof Player || tamedAnimal) && (damager instanceof Player || (damager instanceof Projectile && (((Projectile) damager)
-                .getShooter() instanceof Player))) && event.getCause() != DamageCause.FALL || damager instanceof Firework) {
+                    .getShooter() instanceof Player))) && event.getCause() != DamageCause.FALL || damager instanceof Firework) {
 
                 Player attacker = null;
                 if (damager instanceof Player) {
@@ -1700,7 +1716,7 @@ public class ResidenceEntityListener implements Listener {
                     return;
 
                 if (srcarea != null && area != null && srcarea.equals(area) && attacker != null && area.getRaid().isUnderRaid() && area.getRaid().onSameTeam(attacker, (Player) ent)
-                    && !ConfigManager.RaidFriendlyFire) {
+                        && !ConfigManager.RaidFriendlyFire) {
                     event.setCancelled(true);
                 }
 
@@ -1709,8 +1725,8 @@ public class ResidenceEntityListener implements Listener {
                 }
 
                 if (srcarea != null && area != null && srcarea.equals(area) && attacker != null &&
-                    srcarea.getPermissions().playerHas((Player) ent, Flags.friendlyfire, FlagCombo.OnlyFalse) &&
-                    srcarea.getPermissions().playerHas(attacker, Flags.friendlyfire, FlagCombo.OnlyFalse)) {
+                        srcarea.getPermissions().playerHas((Player) ent, Flags.friendlyfire, FlagCombo.OnlyFalse) &&
+                        srcarea.getPermissions().playerHas(attacker, Flags.friendlyfire, FlagCombo.OnlyFalse)) {
 
                     CMIActionBar.send(attacker, plugin.getLM().getMessage(lm.General_NoFriendlyFire));
                     if (isOnFire)
@@ -1768,7 +1784,7 @@ public class ResidenceEntityListener implements Listener {
         if (event.isCancelled()) {
             /* Put out a fire on a player */
             if ((ent instanceof Player || tamedAnimal) && (event.getCause() == EntityDamageEvent.DamageCause.FIRE || event
-                .getCause() == EntityDamageEvent.DamageCause.FIRE_TICK)) {
+                    .getCause() == EntityDamageEvent.DamageCause.FIRE_TICK)) {
                 ent.setFireTicks(0);
             }
         }

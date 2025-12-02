@@ -55,10 +55,10 @@ public class PlayerManager implements ResidencePlayerInterface {
             byte[] hash = md.digest(playerName.getBytes(StandardCharsets.UTF_8));
 
             long msb = 0xFFFFFFFF00000000L
-                | ((hash[0] & 0xFFL) << 24)
-                | ((hash[1] & 0xFFL) << 16)
-                | ((hash[2] & 0xFFL) << 8)
-                | (hash[3] & 0xFFL);
+                    | ((hash[0] & 0xFFL) << 24)
+                    | ((hash[1] & 0xFFL) << 16)
+                    | ((hash[2] & 0xFFL) << 8)
+                    | (hash[3] & 0xFFL);
             long lsb = 0;
             for (int i = 4; i < 12; i++) {
                 lsb = (lsb << 8) | (hash[i] & 0xFFL);
@@ -187,20 +187,20 @@ public class PlayerManager implements ResidencePlayerInterface {
         return rp;
     }
 
-    public ResidencePlayer playerJoin(Player player) {
+    public @NotNull ResidencePlayer playerJoin(Player player) {
         return playerJoin((OfflinePlayer) player);
     }
 
-    public ResidencePlayer playerJoin(OfflinePlayer player) {
+    public @NotNull ResidencePlayer playerJoin(OfflinePlayer player) {
         ResidencePlayer resPlayer = playersByUUID.get(player.getUniqueId());
 
         if (resPlayer == null) {
             resPlayer = new ResidencePlayer(player);
             addPlayer(resPlayer);
-            resPlayer.save();
         } else {
             resPlayer.updatePlayer(player);
         }
+        resPlayer.save();
         resPlayer.setLastSeen(System.currentTimeMillis());
         resPlayer.updateLastKnownWorld();
 
@@ -392,7 +392,7 @@ public class PlayerManager implements ResidencePlayerInterface {
         return playerJoin(player);
     }
 
-    public ResidencePlayer getResidencePlayer(Player player) {
+    public @NotNull ResidencePlayer getResidencePlayer(Player player) {
         if (player == null)
             return null;
 

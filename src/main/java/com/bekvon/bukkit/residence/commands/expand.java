@@ -20,90 +20,95 @@ import net.Zrips.CMILib.FileHandler.ConfigReader;
 
 public class expand implements cmd {
 
-	@Override
-	@CommandAnnotation(simple = true, priority = 2000)
-	public Boolean perform(Residence plugin, CommandSender sender, String[] args, boolean resadmin) {
-		if (!(sender instanceof Player))
-			return false;
+    @Override
+    @CommandAnnotation(simple = true, priority = 2000)
+    public Boolean perform(Residence plugin, CommandSender sender, String[] args, boolean resadmin) {
+        if (!(sender instanceof Player))
+            return false;
 
-		Player player = (Player) sender;
-		ClaimedResidence res = null;
-		int amount = -1;
+        Player player = (Player) sender;
+        ClaimedResidence res = null;
+        int amount = -1;
 
-		Location loc = player.getLocation();
+        Location loc = player.getLocation();
 
-		for (String one : args) {
+        for (String one : args) {
 
-			if (res == null) {
-				ClaimedResidence temp = plugin.getResidenceManager().getByName(one);
-				if (temp != null) {
-					res = temp;
-				} else
-					res = plugin.getResidenceManager().getByLoc(loc);
-			}
+            if (res == null) {
+                ClaimedResidence temp = plugin.getResidenceManager().getByName(one);
+                if (temp != null) {
+                    res = temp;
+                } else
+                    res = plugin.getResidenceManager().getByLoc(loc);
+            }
 
-			try {
-				amount = Integer.parseInt(one);
-			} catch (NumberFormatException e) {
-			}
-		}
+            try {
+                amount = Integer.parseInt(one);
+            } catch (NumberFormatException e) {
+            }
+        }
 
-		if (res == null || args.length <= 1)
-			res = plugin.getResidenceManager().getByLoc(loc);
+        if (res == null || args.length <= 1)
+            res = plugin.getResidenceManager().getByLoc(loc);
 
-		if (res == null) {
-			lm.Invalid_Residence.sendMessage(sender);
-			return true;
-		}
+        if (res == null) {
+            lm.Invalid_Residence.sendMessage(sender);
+            return true;
+        }
 
-		if (res.getRaid().isRaidInitialized()) {
-			lm.Raid_cantDo.sendMessage(sender);
-			return true;
-		}
+        if (res.getRaid().isRaidInitialized()) {
+            lm.Raid_cantDo.sendMessage(sender);
+            return true;
+        }
 
-		if (res.isSubzone() && !resadmin && !ResPerm.command_expand_subzone.hasPermission(player, lm.Subzone_CantExpand))
-			return true;
+        if (!resadmin && !res.isOwner(player)) {
+            lm.Residence_NotOwner.sendMessage(sender);
+            return true;
+        }
 
-		if (!res.isSubzone() && !resadmin && !ResPerm.command_$1.hasPermission(player, lm.Residence_CantExpandResidence, this.getClass().getSimpleName()))
-			return true;
+        if (res.isSubzone() && !resadmin && !ResPerm.command_expand_subzone.hasPermission(player, lm.Subzone_CantExpand))
+            return true;
 
-		String areaName = res.getAreaNameByLoc(loc);
+        if (!res.isSubzone() && !resadmin && !ResPerm.command_$1.hasPermission(player, lm.Residence_CantExpandResidence, this.getClass().getSimpleName()))
+            return true;
 
-		if (areaName == null)
-			areaName = res.getMainAreaName();
+        String areaName = res.getAreaNameByLoc(loc);
 
-		CuboidArea area = res.getArea(areaName);
+        if (areaName == null)
+            areaName = res.getMainAreaName();
 
-		if (area == null) {
-			lm.Area_NonExist.sendMessage(sender);
-			return false;
-		}
+        CuboidArea area = res.getArea(areaName);
 
-		plugin.getSelectionManager().placeLoc(player, area.getHighLocation(), area.getLowLocation(), false);
+        if (area == null) {
+            lm.Area_NonExist.sendMessage(sender);
+            return false;
+        }
 
-		amount = CMINumber.clamp(amount, 1, Integer.MAX_VALUE);
+        plugin.getSelectionManager().placeLoc(player, area.getHighLocation(), area.getLowLocation(), false);
 
-		plugin.getSelectionManager().modify(player, false, amount);
+        amount = CMINumber.clamp(amount, 1, Integer.MAX_VALUE);
 
-		if (plugin.getSelectionManager().hasPlacedBoth(player)) {
-			if (plugin.getWorldEdit() != null && plugin.getWorldEditTool().equals(plugin.getConfigManager().getSelectionTool())) {
-				plugin.getSelectionManager().worldEdit(player);
-			}
+        plugin.getSelectionManager().modify(player, false, amount);
 
-			res.replaceArea(player, plugin.getSelectionManager().getSelectionCuboid(player), areaName, resadmin);
-			return true;
-		}
-		lm.Select_Points.sendMessage(sender);
+        if (plugin.getSelectionManager().hasPlacedBoth(player)) {
+            if (plugin.getWorldEdit() != null && plugin.getWorldEditTool().equals(plugin.getConfigManager().getSelectionTool())) {
+                plugin.getSelectionManager().worldEdit(player);
+            }
 
-		return false;
-	}
+            res.replaceArea(player, plugin.getSelectionManager().getSelectionCuboid(player), areaName, resadmin);
+            return true;
+        }
+        lm.Select_Points.sendMessage(sender);
 
-	@Override
-	public void getLocale() {
-		ConfigReader c = Residence.getInstance().getLocaleManager().getLocaleConfig();
-		c.get("Description", "Expands residence in direction you looking");
-		c.get("Info", Arrays.asList("&eUsage: &6/res expand (residence) [amount]", "Expands residence in direction you looking.", "Residence name is optional"));
-		LocaleManager.addTabCompleteMain(this, "[residence]%%1", "1");
-	}
+        return false;
+    }
+
+    @Override
+    public void getLocale() {
+        ConfigReader c = Residence.getInstance().getLocaleManager().getLocaleConfig();
+        c.get("Description", "Expands residence in direction you looking");
+        c.get("Info", Arrays.asList("&eUsage: &6/res expand (residence) [amount]", "Expands residence in direction you looking.", "Residence name is optional"));
+        LocaleManager.addTabCompleteMain(this, "[residence]%%1", "1");
+    }
 
 }

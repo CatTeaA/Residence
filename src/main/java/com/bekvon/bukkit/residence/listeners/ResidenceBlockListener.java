@@ -47,13 +47,12 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.world.PortalCreateEvent;
 import org.bukkit.event.world.StructureGrowEvent;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.util.Vector;
 
 import com.bekvon.bukkit.residence.ConfigManager;
 import com.bekvon.bukkit.residence.Residence;
-import com.bekvon.bukkit.residence.commands.auto.direction;
+import com.bekvon.bukkit.residence.commands.auto;
 import com.bekvon.bukkit.residence.containers.Flags;
 import com.bekvon.bukkit.residence.containers.ResAdmin;
 import com.bekvon.bukkit.residence.containers.ResidencePlayer;
@@ -61,25 +60,21 @@ import com.bekvon.bukkit.residence.containers.lm;
 import com.bekvon.bukkit.residence.permissions.PermissionGroup;
 import com.bekvon.bukkit.residence.permissions.PermissionManager.ResPerm;
 import com.bekvon.bukkit.residence.protection.ClaimedResidence;
-import com.bekvon.bukkit.residence.protection.CuboidArea;
 import com.bekvon.bukkit.residence.protection.FlagPermissions;
 import com.bekvon.bukkit.residence.protection.FlagPermissions.FlagCombo;
 import com.bekvon.bukkit.residence.utils.Utils;
 
 import net.Zrips.CMILib.ActionBar.CMIActionBar;
 import net.Zrips.CMILib.Container.CMIBlock;
+import net.Zrips.CMILib.Container.CMIVectorInt3D;
 import net.Zrips.CMILib.Container.CMIWorld;
 import net.Zrips.CMILib.Items.CMIMC;
 import net.Zrips.CMILib.Items.CMIMaterial;
-import net.Zrips.CMILib.Logs.CMIDebug;
 import net.Zrips.CMILib.Version.Version;
 
 public class ResidenceBlockListener implements Listener {
 
-    private List<String> MessageInformed = new ArrayList<String>();
-
-    private Set<UUID> ResCreated = new HashSet<UUID>();
-    public static Set<UUID> newPlayers = new HashSet<UUID>();
+    private List<UUID> MessageInformed = new ArrayList<UUID>();
 
     private Residence plugin;
 
@@ -324,7 +319,7 @@ public class ResidenceBlockListener implements Listener {
             return;
 
         if (!CMIMaterial.get(event.getNewState().getType()).equals(CMIMaterial.WATER) && event.getBlock().getState().getType() != Material.SNOW && event.getBlock().getState()
-            .getType() != Material.SNOW_BLOCK)
+                .getType() != Material.SNOW_BLOCK)
             return;
 
         FlagPermissions perms = FlagPermissions.getPerms(event.getBlock().getLocation());
@@ -344,7 +339,10 @@ public class ResidenceBlockListener implements Listener {
             return;
         Entity ent = event.getEntity();
 
-        if (!ent.hasMetadata(SourceResidenceName) && /* Equals to air when generic falling block is spawned, not when falling block originates from spawnegg */ event.getTo() == Material.AIR) {
+        if (!ent.hasMetadata(SourceResidenceName) && /*
+                                                      * Equals to air when generic falling block is spawned, not when falling block
+                                                      * originates from spawnegg
+                                                      */ event.getTo() == Material.AIR) {
 
             ClaimedResidence res = plugin.getResidenceManager().getByLoc(ent.getLocation());
             String resName = res == null ? "NULL" : res.getName();
@@ -422,7 +420,7 @@ public class ResidenceBlockListener implements Listener {
         if (plugin.getPlayerManager().getResidenceCount(player.getUniqueId()) != 0)
             return;
 
-        if (MessageInformed.contains(player.getName()))
+        if (MessageInformed.contains(player.getUniqueId()))
             return;
 
         if (!ResPerm.newguyresidence.hasPermission(player))
@@ -430,7 +428,7 @@ public class ResidenceBlockListener implements Listener {
 
         lm.General_NewPlayerInfo.sendMessage(player);
 
-        MessageInformed.add(player.getName());
+        MessageInformed.add(player.getUniqueId());
     }
 
     private boolean checkBlock(ClaimedResidence orRes, Location loc, Vector offset, Material type, Player player) {
@@ -442,10 +440,10 @@ public class ResidenceBlockListener implements Listener {
     }
 
     private static final List<Vector> chestVectors = new ArrayList<Vector>(Arrays.asList(
-        new Vector(0, 0, -1),
-        new Vector(0, 0, 1),
-        new Vector(1, 0, 0),
-        new Vector(-1, 0, 0)));
+            new Vector(0, 0, -1),
+            new Vector(0, 0, 1),
+            new Vector(1, 0, 0),
+            new Vector(-1, 0, 0)));
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onChestPlaceNearResidence(BlockPlaceEvent event) {
@@ -486,19 +484,18 @@ public class ResidenceBlockListener implements Listener {
             return;
 
         Player player = event.getPlayer();
+        
         if (ResAdmin.isResAdmin(player))
             return;
+        
         Block block = event.getBlock();
+
         if (!CMIMaterial.get(block.getType()).containsCriteria(CMIMC.CHEST))
             return;
 
-        if (plugin.getPlayerManager().getResidenceCount(player.getUniqueId()) != 0)
-            return;
+        ResidencePlayer rp = ResidencePlayer.get(player);
 
-        if (ResCreated.contains(player.getUniqueId()))
-            return;
-
-        if (!newPlayers.contains(player.getUniqueId()))
+        if (rp.getResAmount() > 0 || rp.getData().ownedResidence())
             return;
 
         Location loc = block.getLocation();
@@ -506,120 +503,17 @@ public class ResidenceBlockListener implements Listener {
         plugin.getSelectionManager().placeLoc1(player, new Location(loc.getWorld(), loc.getBlockX() - 1, loc.getBlockY() - 1, loc.getBlockZ() - 1), true);
         plugin.getSelectionManager().placeLoc2(player, new Location(loc.getWorld(), loc.getBlockX() + 1, loc.getBlockY() + 1, loc.getBlockZ() + 1), true);
 
-        resize(plugin, player, plugin.getSelectionManager().getSelectionCuboid(player), !plugin.getConfigManager().isNewPlayerFree(),
-            plugin.getConfigManager().getNewPlayerRangeX() * 2,
-            plugin.getConfigManager().getNewPlayerRangeY() * 2,
-            plugin.getConfigManager().getNewPlayerRangeZ() * 2);
+        CMIVectorInt3D max = new CMIVectorInt3D(plugin.getConfigManager().getNewPlayerRangeX() * 2,
+                plugin.getConfigManager().getNewPlayerRangeY() * 2,
+                plugin.getConfigManager().getNewPlayerRangeZ() * 2);
+
+        auto.optimizedResize(player, plugin.getSelectionManager().getSelectionCuboid(player), !plugin.getConfigManager().isNewPlayerFree(), max);
 
         boolean created = plugin.getResidenceManager().addResidence(player, player.getName(), plugin.getSelectionManager().getPlayerLoc1(player),
-            plugin.getSelectionManager().getPlayerLoc2(player), plugin.getConfigManager().isNewPlayerFree());
+                plugin.getSelectionManager().getPlayerLoc2(player), plugin.getConfigManager().isNewPlayerFree());
         if (created) {
-            ResCreated.add(player.getUniqueId());
-            newPlayers.remove(player.getUniqueId());
+            rp.getData().ownedResidence(true);
         }
-    }
-
-    public static void resize(Residence plugin, Player player, CuboidArea cuboid, boolean checkBalance, int maxX, int maxY, int maxZ) {
-
-        ResidencePlayer rPlayer = plugin.getPlayerManager().getResidencePlayer(player);
-        PermissionGroup group = rPlayer.getGroup();
-
-        double cost = cuboid.getCost(group);
-
-        double balance = 0;
-        if (plugin.getEconomyManager() != null)
-            balance = plugin.getEconomyManager().getBalance(player);
-
-        direction dir = direction.Top;
-
-        List<direction> locked = new ArrayList<direction>();
-
-        boolean checkCollision = plugin.getConfigManager().isARCCheckCollision();
-        int skipped = 0;
-        int done = 0;
-        while (true) {
-            done++;
-
-            if (skipped >= 6) {
-                break;
-            }
-
-            // fail safe if loop keeps going on
-            if (done > 10000)
-                break;
-
-            if (locked.contains(dir)) {
-                dir = dir.getNext();
-                skipped++;
-                continue;
-            }
-
-            CuboidArea c = new CuboidArea();
-            c.setLowLocation(cuboid.getLowLocation().clone().add(-dir.getLow().getX(), -dir.getLow().getY(), -dir.getLow().getZ()));
-            c.setHighLocation(cuboid.getHighLocation().clone().add(dir.getHigh().getX(), dir.getHigh().getY(), dir.getHigh().getZ()));
-
-            if (c.getLowVector().getY() < 0) {
-                c.getLowVector().setY(0);
-                locked.add(dir);
-                dir = dir.getNext();
-                skipped++;
-                continue;
-            }
-
-            if (c.getHighVector().getY() >= c.getWorld().getMaxHeight()) {
-                c.getHighVector().setY(c.getWorld().getMaxHeight() - 1);
-                locked.add(dir);
-                dir = dir.getNext();
-                skipped++;
-                continue;
-            }
-
-            if (checkCollision && plugin.getResidenceManager().collidesWithResidence(c) != null) {
-                locked.add(dir);
-                dir = dir.getNext();
-                skipped++;
-                continue;
-            }
-
-            if (c.getXSize() >= maxX - group.getMinX()) {
-                locked.add(dir);
-                dir = dir.getNext();
-                skipped++;
-                continue;
-            }
-
-            if (c.getYSize() >= maxY - group.getMinYSize()) {
-                locked.add(dir);
-                dir = dir.getNext();
-                skipped++;
-                continue;
-            }
-
-            if (c.getZSize() >= maxZ - group.getMinZ()) {
-                locked.add(dir);
-                dir = dir.getNext();
-                skipped++;
-                continue;
-            }
-
-            skipped = 0;
-
-            if (checkBalance) {
-                if (plugin.getConfigManager().enableEconomy()) {
-                    cost = c.getCost(group);
-                    if (cost > balance)
-                        break;
-                }
-            }
-
-            cuboid.setLowLocation(c.getLowLocation());
-            cuboid.setHighLocation(c.getHighLocation());
-
-            dir = dir.getNext();
-        }
-
-        plugin.getSelectionManager().placeLoc1(player, cuboid.getLowLocation());
-        plugin.getSelectionManager().placeLoc2(player, cuboid.getHighLocation());
     }
 
     public static boolean canPlaceBlock(Player player, Block block, boolean informPlayer) {
@@ -674,7 +568,7 @@ public class ResidenceBlockListener implements Listener {
                 perms = FlagPermissions.getPerms(sec.getLocation(), player);
                 hasplace = perms.playerHas(player, Flags.place, perms.playerHas(player, Flags.build, true));
                 if (!hasplace
-                    && !ResPerm.bypass_build.hasPermission(player, 10000L)) {
+                        && !ResPerm.bypass_build.hasPermission(player, 10000L)) {
                     if (informPlayer)
                         lm.Flag_Deny.sendMessage(player, Flags.place);
                     return false;
@@ -791,7 +685,8 @@ public class ResidenceBlockListener implements Listener {
 
         ClaimedResidence pistonRes = plugin.getResidenceManager().getByLoc(event.getBlock().getLocation());
 
-        if (pistonRes != null && pistonRes.containsLoc(new Location(origins.getWorld(), lowestX, lowestY, lowestZ)) && pistonRes.containsLoc(new Location(origins.getWorld(), bigestX, bigestY, bigestZ))) {
+        if (pistonRes != null && pistonRes.containsLoc(new Location(origins.getWorld(), lowestX, lowestY, lowestZ))
+                && pistonRes.containsLoc(new Location(origins.getWorld(), bigestX, bigestY, bigestZ))) {
             return;
         }
 
@@ -929,13 +824,14 @@ public class ResidenceBlockListener implements Listener {
             return;
 
         // target location
-        Location location = Version.isCurrentEqualOrHigher(Version.v1_13_R1) ? block.getRelative(((Dispenser) block.getBlockData()).getFacing()).getLocation() : block.getRelative((((org.bukkit.material.Dispenser)((org.bukkit.block.Dispenser) block).getData()).getFacing())).getLocation();
+        Location location = Version.isCurrentEqualOrHigher(Version.v1_13_R1) ? block.getRelative(((Dispenser) block.getBlockData()).getFacing()).getLocation()
+                : block.getRelative((((org.bukkit.material.Dispenser) ((org.bukkit.block.Dispenser) block).getData()).getFacing())).getLocation();
 
         ClaimedResidence targetres = plugin.getResidenceManager().getByLoc(location);
 
         CMIMaterial cmat = CMIMaterial.get(event.getItem());
         if (targetres == null && location.getBlockY() >= plugin.getConfigManager().getPlaceLevel() && plugin.getConfigManager().getNoPlaceWorlds().contains(location
-            .getWorld().getName())) {
+                .getWorld().getName())) {
             if (plugin.getConfigManager().isNoLavaPlace() && cmat == CMIMaterial.LAVA_BUCKET) {
                 event.setCancelled(true);
                 return;
@@ -1029,7 +925,8 @@ public class ResidenceBlockListener implements Listener {
             return;
 
         Player player = null;
-        // Crude attempt to get player object. Older versions will create exception of missing method
+        // Crude attempt to get player object. Older versions will create exception of
+        // missing method
         try {
             if (event.getEntity() instanceof Player)
                 player = (Player) event.getEntity();
@@ -1165,9 +1062,9 @@ public class ResidenceBlockListener implements Listener {
             return;
 
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK ||
-            !CMIMaterial.get(clickedBlock.getType()).equals(CMIMaterial.TNT) ||
-            event.getItem() == null ||
-            !CMIMaterial.get(event.getItem()).equals(CMIMaterial.FLINT_AND_STEEL))
+                !CMIMaterial.get(clickedBlock.getType()).equals(CMIMaterial.TNT) ||
+                event.getItem() == null ||
+                !CMIMaterial.get(event.getItem()).equals(CMIMaterial.FLINT_AND_STEEL))
             return;
 
         event.setCancelled(true);

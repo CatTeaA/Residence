@@ -38,10 +38,9 @@ public class ResidencePlayer {
 
     private PlayerGroup groups = null;
 
-    private long lastSeen = 0L;
+    private ResidencePlayerData data = null;
 
     private boolean saved = false;
-    private String lastKnownWorld = null;
 
     private static final int maxValue = 9999;
 
@@ -183,7 +182,6 @@ public class ResidencePlayer {
         m = m == -1 ? maxValue : m;
 
         getMaxData().setMaxSubzoneDepth(Residence.getInstance().getPermissionManager().getPermissionInfo(this.getUniqueId(), ResPerm.max_subzonedepth_$1).getMaxValue(m));
-
     }
 
     public int getMaxSubzoneDepth() {
@@ -294,6 +292,7 @@ public class ResidencePlayer {
         if (this.userName != null)
             residence.getPermissions().setOwnerLastKnownName(userName);
         this.residenceList.add(residence);
+        this.getData().ownedResidence(true);
     }
 
     public void removeResidence(ClaimedResidence residence) {
@@ -461,7 +460,7 @@ public class ResidencePlayer {
         return Residence.getInstance().getPlayerManager().getResidencePlayer(name);
     }
 
-    public static ResidencePlayer get(Player player) {
+    public static @NotNull ResidencePlayer get(Player player) {
         return Residence.getInstance().getPlayerManager().getResidencePlayer(player);
     }
 
@@ -494,11 +493,7 @@ public class ResidencePlayer {
         if (maxData != null)
             map.putAll(maxData.serialize());
 
-        if (getLastSeen() > 0L)
-            map.put("Seen", getLastSeen());
-
-        if (getLastKnownWorld() != null)
-            map.put("World", getLastKnownWorld());
+        map.putAll(this.getData().serialize(this.getResAmount() > 0));
 
         map.putAll(getGroups().serialize());
 
@@ -523,22 +518,10 @@ public class ResidencePlayer {
             return null;
 
         ResidencePlayer rplayer = new ResidencePlayer(name, uuid);
-        if (map.containsKey("Seen")) {
-            try {
-                rplayer.setLastSeen((Long) map.get("Seen"));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        if (map.containsKey("World")) {
-            try {
-                rplayer.setLastKnownWorld((String) map.get("World"));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
+
         ResidencePlayerMaxValues.deserialize(uuid, map);
 
+        rplayer.data = ResidencePlayerData.deserialize(map);
         rplayer.groups = PlayerGroup.deserialize(rplayer, map);
 
         return rplayer;
@@ -552,25 +535,34 @@ public class ResidencePlayer {
         this.saved = saved;
     }
 
+    @Deprecated
     public long getLastSeen() {
-
-        return lastSeen;
+        return getData().getLastSeen();
     }
 
+    @Deprecated
     public void setLastSeen(long lastSeen) {
-        this.lastSeen = lastSeen;
+        getData().setLastSeen(lastSeen);
     }
 
+    @Deprecated
     public String getLastKnownWorld() {
-        return lastKnownWorld;
+        return getData().getLastKnownWorld();
     }
 
     public void updateLastKnownWorld() {
         if (this.getPlayer() != null)
-            this.lastKnownWorld = this.getPlayer().getWorld().getName();
+            getData().setLastKnownWorld(this.getPlayer().getWorld().getName());
     }
 
+    @Deprecated
     public void setLastKnownWorld(String lastKnownWorld) {
-        this.lastKnownWorld = lastKnownWorld;
+        getData().setLastKnownWorld(lastKnownWorld);
+    }
+
+    public ResidencePlayerData getData() {
+        if (data == null)
+            data = new ResidencePlayerData();
+        return data;
     }
 }

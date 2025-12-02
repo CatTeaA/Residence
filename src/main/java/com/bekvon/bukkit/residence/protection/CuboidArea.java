@@ -22,6 +22,15 @@ public class CuboidArea {
     protected String worldName;
     protected World world;
 
+    public CuboidArea clone() {
+        CuboidArea newArea = new CuboidArea();
+        newArea.highPoints = highPoints.clone();
+        newArea.lowPoints = lowPoints.clone();
+        newArea.worldName = worldName;
+        newArea.world = world;
+        return newArea;
+    }
+
     public CuboidArea(Location startLoc, Location endLoc) {
 
         if (startLoc == null || endLoc == null)
@@ -110,7 +119,7 @@ public class CuboidArea {
             return false;
         }
         if (area.containsLoc(lowPoints, getWorldName()) || area.containsLoc(highPoints, getWorldName()) || this.containsLoc(area.highPoints, getWorldName()) || this.containsLoc(area.lowPoints,
-            getWorldName())) {
+                getWorldName())) {
             return true;
         }
         return advCuboidCheckCollision(highPoints, lowPoints, area.highPoints, area.lowPoints);
