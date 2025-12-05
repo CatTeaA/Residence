@@ -182,6 +182,7 @@ public enum lm {
     Flag_lackPrefix(""),
     Flag_others("&eand &2%1 &eothers"),
     Flag_Set("&eFlag (&6%1&e) set for &6%2 &eto &6%3 &estate"),
+    Flag_GSet("&eFlags (&6%1&e) set for &6%2"),
     Flag_Removed("&eFlag (&6%1&e) removed for &6%2"),
     Flag_PSet("&eFlag (&6%1&e) set for &6%2 &eto &6%3 &estate for &6%4"),
     Flag_PRemoved("&eFlag (&6%1&e) removed from &6%2 &eresidence for &6%3"),
@@ -503,7 +504,7 @@ public enum lm {
 
     General_TeleportDeny("&cYou don't have teleport access."),
     General_TeleportSuccess("&eTeleported!"),
-    General_TeleportConfirmLava("&cThis teleport is not safe, you will fall into &6lava&c. Use &6/res tpconfirm &cto perform teleportation anyways."),
+    General_TeleportConfirmBlock("&cThis teleport is not safe, you will fall into &6%1&c. Use &6/res tpconfirm &cto perform teleportation anyways."),
     General_TeleportConfirmVoid("&cThis teleport is not safe, you will fall into &6void&c. Use &6/res tpconfirm &cto perform teleportation anyways."),
     General_TeleportConfirm("&cThis teleport is not safe, you will fall for &6%1 &cblocks. Use &6/res tpconfirm &cto perform teleportation anyways."),
     General_TeleportStarted("&eTeleportation to &6%1 &estarted, don't move for next &6%2 &esec."),
