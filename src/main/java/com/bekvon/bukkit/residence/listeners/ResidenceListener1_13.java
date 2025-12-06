@@ -117,25 +117,25 @@ public class ResidenceListener1_13 implements Listener {
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onProjectileHitButtonPlate(ProjectileHitEvent event) {
+    public void onProjectileHitBlock(ProjectileHitEvent event) {
         // Disabling listener if flag disabled globally
         if (!Flags.use.isGlobalyEnabled())
             return;
         // Avoid Projectile getWorld NPE
-        if (event.getHitBlock() == null)
+        Block block = event.getHitBlock();
+        if (block == null)
             return;
-
-        if (plugin.isDisabledWorldListener(event.getHitBlock().getWorld()))
+        // disabling event on world
+        if (plugin.isDisabledWorldListener(block.getWorld()))
             return;
-
-        Block block = event.getHitBlock().getLocation().clone().add(event.getHitBlockFace().getDirection()).getBlock();
 
         @NotNull
         CMIMaterial cmat = CMIMaterial.get(block.getType());
         boolean isButton = cmat.isButton();
         boolean isPlate = cmat.isPlate();
+        boolean isBell = cmat.equals(CMIMaterial.BELL);
 
-        if (!isButton && !isPlate)
+        if (!isButton && !isPlate && !isBell)
             return;
 
         ClaimedResidence res = ClaimedResidence.getByLoc(block.getLocation());
@@ -165,6 +165,12 @@ public class ResidenceListener1_13 implements Listener {
 
                 lm.Flag_Deny.sendMessage(player, Flags.pressure);
 
+            } else {
+                if (perms.playerHas(player, Flags.use, true))
+                    return;
+
+                lm.Flag_Deny.sendMessage(player, Flags.use);
+
             }
 
         } else {
@@ -183,6 +189,10 @@ public class ResidenceListener1_13 implements Listener {
 
             } else if (isPlate) {
                 if (perms.has(Flags.pressure, hasUse))
+                    return;
+
+            } else {
+                if (perms.has(Flags.use, true))
                     return;
 
             }
