@@ -117,25 +117,25 @@ public class ResidenceListener1_13 implements Listener {
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onProjectileHitBlock(ProjectileHitEvent event) {
+    public void onProjectileHitButtonPlate(ProjectileHitEvent event) {
         // Disabling listener if flag disabled globally
         if (!Flags.use.isGlobalyEnabled())
             return;
         // Avoid Projectile getWorld NPE
-        Block block = event.getHitBlock();
-        if (block == null)
+        if (event.getHitBlock() == null)
             return;
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(block.getWorld()))
+
+        if (plugin.isDisabledWorldListener(event.getHitBlock().getWorld()))
             return;
+
+        Block block = event.getHitBlock().getLocation().clone().add(event.getHitBlockFace().getDirection()).getBlock();
 
         @NotNull
         CMIMaterial cmat = CMIMaterial.get(block.getType());
         boolean isButton = cmat.isButton();
         boolean isPlate = cmat.isPlate();
-        boolean isBell = cmat.equals(CMIMaterial.BELL);
 
-        if (!isButton && !isPlate && !isBell)
+        if (!isButton && !isPlate)
             return;
 
         ClaimedResidence res = ClaimedResidence.getByLoc(block.getLocation());
@@ -159,17 +159,11 @@ public class ResidenceListener1_13 implements Listener {
                 // Deny msgs for the EntityInteractEvent below to avoid chat spam
                 lm.Flag_Deny.sendMessage(player, Flags.button);
 
-            } else if (isPlate) {
+            } else {
                 if (perms.playerHas(player, Flags.pressure, hasUse))
                     return;
 
                 lm.Flag_Deny.sendMessage(player, Flags.pressure);
-
-            } else {
-                if (perms.playerHas(player, Flags.use, true))
-                    return;
-
-                lm.Flag_Deny.sendMessage(player, Flags.use);
 
             }
 
@@ -187,12 +181,8 @@ public class ResidenceListener1_13 implements Listener {
                 if (perms.has(Flags.button, hasUse))
                     return;
 
-            } else if (isPlate) {
-                if (perms.has(Flags.pressure, hasUse))
-                    return;
-
             } else {
-                if (perms.has(Flags.use, true))
+                if (perms.has(Flags.pressure, hasUse))
                     return;
 
             }
@@ -243,7 +233,7 @@ public class ResidenceListener1_13 implements Listener {
                 if (perms.playerHas(player, Flags.button, hasUse))
                     return;
 
-            }else if (isPlate) {
+            } else {
                 if (perms.playerHas(player, Flags.pressure, hasUse))
                     return;
 
@@ -263,7 +253,7 @@ public class ResidenceListener1_13 implements Listener {
                 if (perms.has(Flags.button, hasUse))
                     return;
 
-            } else if (isPlate) {
+            } else {
                 if (perms.has(Flags.pressure, hasUse))
                     return;
 
