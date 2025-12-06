@@ -42,7 +42,6 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -1576,42 +1575,6 @@ public class ResidencePlayerListener implements Listener {
             }
         }
 
-    }
-
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onUseChorusFruitEnderPearl(PlayerItemConsumeEvent event) {
-        Player player = event.getPlayer();
-        if (player == null)
-            return;
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(player.getWorld()))
-            return;
-
-        CMIMaterial item = CMIMaterial.get(event.getItem());
-
-        if (item.equals(CMIMaterial.CHORUS_FRUIT)) {
-
-            if (player.hasMetadata("NPC") || ResAdmin.isResAdmin(player))
-                return;
-
-            if (FlagPermissions.has(player.getLocation(), player, Flags.chorustp, true))
-                return;
-
-            lm.Flag_Deny.sendMessage(player, Flags.chorustp);
-            event.setCancelled(true);
-
-        } else if (item.equals(CMIMaterial.ENDER_PEARL)) {
-
-            if (player.hasMetadata("NPC") || ResAdmin.isResAdmin(player))
-                return;
-
-            if (FlagPermissions.has(player.getLocation(), player, Flags.enderpearl, true))
-                return;
-
-            lm.Flag_Deny.sendMessage(player, Flags.enderpearl);
-            event.setCancelled(true);
-
-        }
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
