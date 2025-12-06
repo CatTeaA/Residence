@@ -262,7 +262,7 @@ public class ResidenceListener1_09 implements Listener {
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onPlayerUseChorusFruit(PlayerItemConsumeEvent event) {
+    public void onPlayerEatChorusFruit(PlayerItemConsumeEvent event) {
         // Disabling listener if flag disabled globally
         if (!Flags.chorustp.isGlobalyEnabled())
             return;
