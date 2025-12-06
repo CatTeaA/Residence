@@ -1478,7 +1478,7 @@ public class ResidencePlayerListener implements Listener {
 
             }
 
-            if (blockM.isSign() && !perms.playerHas(player, Flags.use, true)) {
+            if (blockM.equals(CMIMaterial.BELL) && !perms.playerHas(player, Flags.use, true)) {
                 lm.Flag_Deny.sendMessage(player, Flags.use);
                 event.setCancelled(true);
                 return;
