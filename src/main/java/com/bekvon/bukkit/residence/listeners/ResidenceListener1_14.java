@@ -1,5 +1,6 @@
 package com.bekvon.bukkit.residence.listeners;
 
+import com.bekvon.bukkit.residence.utils.Utils;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -8,6 +9,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
+import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerTakeLecternBookEvent;
 import org.bukkit.event.vehicle.VehicleDamageEvent;
@@ -16,6 +18,7 @@ import com.bekvon.bukkit.residence.Residence;
 import com.bekvon.bukkit.residence.containers.Flags;
 import com.bekvon.bukkit.residence.containers.ResAdmin;
 import com.bekvon.bukkit.residence.containers.lm;
+import com.bekvon.bukkit.residence.protection.ClaimedResidence;
 import com.bekvon.bukkit.residence.protection.FlagPermissions;
 import com.bekvon.bukkit.residence.protection.FlagPermissions.FlagCombo;
 
@@ -130,5 +133,50 @@ public class ResidenceListener1_14 implements Listener {
 
         lm.Flag_Deny.sendMessage(player, Flags.use);
         event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onProjectileHitBell(ProjectileHitEvent event) {
+        // Disabling listener if flag disabled globally
+        if (!Flags.use.isGlobalyEnabled())
+            return;
+
+        Block block = event.getHitBlock();
+        if (block == null)
+            return;
+        // disabling event on world
+        if (plugin.isDisabledWorldListener(block.getWorld()))
+            return;
+
+        CMIMaterial cmat = CMIMaterial.get(block.getType());
+
+        if (!cmat.equals(CMIMaterial.BELL))
+            return;
+
+        Player player = Utils.potentialProjectileToPlayer(event.getEntity());
+        if (player != null) {
+
+            if (ResAdmin.isResAdmin(player))
+                return;
+
+            if (FlagPermissions.has(block.getLocation(), player, Flags.use, true))
+                return;
+
+            lm.Flag_Deny.sendMessage(player, Flags.use);
+            event.setCancelled(true);
+
+        } else {
+            // Entity not player source
+            // Check potential block as a shooter which should be allowed if its inside same
+            // residence
+            if (Utils.isSourceBlockInsideSameResidence(event.getEntity(), ClaimedResidence.getByLoc(block.getLocation())))
+                return;
+
+            if (FlagPermissions.has(block.getLocation(), Flags.use, true))
+                return;
+
+            event.setCancelled(true);
+
+        }
     }
 }
