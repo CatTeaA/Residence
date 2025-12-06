@@ -1,6 +1,5 @@
 package com.bekvon.bukkit.residence.listeners;
 
-import com.bekvon.bukkit.residence.utils.Utils;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -10,7 +9,6 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerTakeLecternBookEvent;
 import org.bukkit.event.vehicle.VehicleDamageEvent;
 
@@ -21,6 +19,7 @@ import com.bekvon.bukkit.residence.containers.lm;
 import com.bekvon.bukkit.residence.protection.ClaimedResidence;
 import com.bekvon.bukkit.residence.protection.FlagPermissions;
 import com.bekvon.bukkit.residence.protection.FlagPermissions.FlagCombo;
+import com.bekvon.bukkit.residence.utils.Utils;
 
 import net.Zrips.CMILib.Logs.CMIDebug;
 import net.Zrips.CMILib.Items.CMIMaterial;
@@ -103,36 +102,6 @@ public class ResidenceListener1_14 implements Listener {
             event.setCancelled(true);
 
         }
-    }
-
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onPlayerInteractBell(PlayerInteractEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.use.isGlobalyEnabled())
-            return;
-
-        Block block = event.getClickedBlock();
-        if  (block == null)
-            return;
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(block.getWorld()))
-            return;
-
-        CMIMaterial blockM = CMIMaterial.get(block.getType());
-
-        if (!blockM.equals(CMIMaterial.BELL))
-            return;
-
-        Player player = event.getPlayer();
-
-        if (ResAdmin.isResAdmin(player))
-            return;
-
-        if (FlagPermissions.has(block.getLocation(), player, Flags.use, true))
-            return;
-
-        lm.Flag_Deny.sendMessage(player, Flags.use);
-        event.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
