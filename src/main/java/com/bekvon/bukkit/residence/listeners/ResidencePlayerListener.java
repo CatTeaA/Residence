@@ -1187,6 +1187,57 @@ public class ResidencePlayerListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onUseChorusFruitEnderPearl(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+        if (player == null)
+            return;
+        // disabling event on world
+        if (plugin.isDisabledWorldListener(player.getWorld()))
+            return;
+
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK)
+            return;
+
+        ItemStack iih = null;
+
+        try {
+            if (Version.isCurrentEqualOrHigher(Version.v1_9_R1))
+                iih = event.getItem();
+            else
+                iih = CMIItemStack.getItemInMainHand(player);
+        } catch (Throwable e) {
+            iih = CMIItemStack.getItemInMainHand(player);
+        }
+
+        if (iih == null)
+            return;
+
+        if (iih.getType().toString().equals("CHORUS_FRUIT")) {
+
+            if (player.hasMetadata("NPC") || ResAdmin.isResAdmin(player))
+                return;
+
+            if (FlagPermissions.has(player.getLocation(), player, Flags.chorustp, true))
+                return;
+
+            lm.Flag_Deny.sendMessage(player, Flags.chorustp);
+            event.setCancelled(true);
+
+        } else if (iih.getType().toString().equals("ENDER_PEARL")) {
+
+            if (player.hasMetadata("NPC") || ResAdmin.isResAdmin(player))
+                return;
+
+            if (FlagPermissions.has(player.getLocation(), player, Flags.enderpearl, true))
+                return;
+
+            lm.Flag_Deny.sendMessage(player, Flags.enderpearl);
+            event.setCancelled(true);
+
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onPlayerFireInteract(PlayerInteractEvent event) {
         if (event.getPlayer() == null)
             return;
