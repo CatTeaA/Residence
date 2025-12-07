@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
@@ -19,6 +20,7 @@ import org.bukkit.event.block.BlockPhysicsEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.player.PlayerBucketEntityEvent;
+import org.bukkit.event.world.StructureGrowEvent;
 import org.bukkit.inventory.ItemStack;
 
 import com.bekvon.bukkit.residence.Residence;
@@ -179,7 +181,7 @@ public class ResidenceListener1_17 implements Listener {
         Player player = event.getPlayer();
 
         if (player != null) {
-            if (ResPerm.bypass_build.hasPermission(player, 10000L))
+            if (ResAdmin.isResAdmin(player))
                 return;
 
             // player not click-position build permission, cancel event immediately
@@ -214,6 +216,29 @@ public class ResidenceListener1_17 implements Listener {
                 }
             }
         }
+    }
 
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onPlayerFertilizeTree(StructureGrowEvent event) {
+        // Disabling listener if flag disabled globally
+        if (!Flags.build.isGlobalyEnabled())
+            return;
+
+        Location loc = event.getLocation();
+        // disabling event on world
+        if (plugin.isDisabledWorldListener(loc.getWorld()))
+            return;
+
+        Player player = event.getPlayer();
+        if (player == null)
+            return;
+
+        if (ResAdmin.isResAdmin(player))
+            return;
+
+        if (FlagPermissions.has(loc, player, Flags.build, FlagCombo.OnlyFalse)) {
+            lm.Flag_Deny.sendMessage(player, Flags.build);
+            event.setCancelled(true);
+        }
     }
 }
