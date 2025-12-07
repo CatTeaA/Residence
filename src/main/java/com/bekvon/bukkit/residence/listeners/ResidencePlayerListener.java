@@ -1456,12 +1456,27 @@ public class ResidencePlayerListener implements Listener {
 
             CMIMaterial blockM = CMIMaterial.get(mat);
 
-            if (heldItem.equals(CMIMaterial.BONE_MEAL)) {
-                FlagPermissions tperms = FlagPermissions.getPerms(block.getRelative(event.getBlockFace()).getLocation(), player);
-                if (!tperms.playerHas(player, Flags.build, true)) {
-                    lm.Flag_Deny.sendMessage(player, Flags.build);
-                    event.setCancelled(true);
-                    return;
+            if (heldItem.isDye() || heldItem.equals(CMIMaterial.GLOW_INK_SAC)) {
+
+                if (heldItem.equals(CMIMaterial.BONE_MEAL) &&
+                        (blockM == CMIMaterial.GRASS_BLOCK ||
+                                blockM == CMIMaterial.GRASS ||
+                                blockM == CMIMaterial.SHORT_GRASS ||
+                                blockM == CMIMaterial.TALL_GRASS ||
+                                blockM == CMIMaterial.TALL_SEAGRASS ||
+                                blockM == CMIMaterial.MOSS_BLOCK ||
+                                blockM == CMIMaterial.BIG_DRIPLEAF_STEM ||
+                                blockM == CMIMaterial.BIG_DRIPLEAF ||
+                                blockM == CMIMaterial.SMALL_DRIPLEAF ||
+                                blockM.isSapling())
+                        ||
+                        heldItem == CMIMaterial.COCOA_BEANS && blockM == CMIMaterial.JUNGLE_WOOD) {
+                    FlagPermissions tperms = FlagPermissions.getPerms(block.getRelative(event.getBlockFace()).getLocation(), player);
+                    if (!tperms.playerHas(player, Flags.build, true)) {
+                        lm.Flag_Deny.sendMessage(player, Flags.build);
+                        event.setCancelled(true);
+                        return;
+                    }
                 }
             }
             if (heldItem.equals(CMIMaterial.ARMOR_STAND) || heldItem.isBoat()) {
