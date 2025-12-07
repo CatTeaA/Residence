@@ -94,11 +94,9 @@ public class ResidenceListener1_17 implements Listener {
         if (!CMIMaterial.get(iih).equals(CMIMaterial.WATER_BUCKET))
             return;
 
-        FlagPermissions perms = Residence.getInstance().getPermsByLocForPlayer(ent.getLocation(), player);
-
-        if (!perms.playerHas(player, Flags.animalkilling, FlagCombo.TrueOrNone)) {
-            event.setCancelled(true);
+        if (FlagPermissions.has(ent.getLocation(), player, Flags.animalkilling, FlagCombo.OnlyFalse)) {
             lm.Flag_Deny.sendMessage(player, Flags.animalkilling);
+            event.setCancelled(true);
         }
     }
 
