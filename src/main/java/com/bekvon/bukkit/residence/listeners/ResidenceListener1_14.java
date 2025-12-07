@@ -16,10 +16,8 @@ import com.bekvon.bukkit.residence.Residence;
 import com.bekvon.bukkit.residence.containers.Flags;
 import com.bekvon.bukkit.residence.containers.ResAdmin;
 import com.bekvon.bukkit.residence.containers.lm;
-import com.bekvon.bukkit.residence.protection.ClaimedResidence;
 import com.bekvon.bukkit.residence.protection.FlagPermissions;
 import com.bekvon.bukkit.residence.protection.FlagPermissions.FlagCombo;
-import com.bekvon.bukkit.residence.utils.Utils;
 
 import net.Zrips.CMILib.Logs.CMIDebug;
 import net.Zrips.CMILib.Items.CMIMaterial;
@@ -122,30 +120,8 @@ public class ResidenceListener1_14 implements Listener {
         if (!cmat.equals(CMIMaterial.BELL))
             return;
 
-        Player player = Utils.potentialProjectileToPlayer(event.getEntity());
-        if (player != null) {
-
-            if (ResAdmin.isResAdmin(player))
-                return;
-
-            if (FlagPermissions.has(block.getLocation(), player, Flags.use, true))
-                return;
-
-            lm.Flag_Deny.sendMessage(player, Flags.use);
+        if (ResidenceListener1_16_5_Paper.ProjectileHitBlock(event.getEntity(), block)) {
             event.setCancelled(true);
-
-        } else {
-            // Entity not player source
-            // Check potential block as a shooter which should be allowed if its inside same
-            // residence
-            if (Utils.isSourceBlockInsideSameResidence(event.getEntity(), ClaimedResidence.getByLoc(block.getLocation())))
-                return;
-
-            if (FlagPermissions.has(block.getLocation(), Flags.use, true))
-                return;
-
-            event.setCancelled(true);
-
         }
     }
 }
