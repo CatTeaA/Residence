@@ -5,7 +5,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
@@ -20,7 +19,6 @@ import org.bukkit.event.block.BlockPhysicsEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.player.PlayerBucketEntityEvent;
-import org.bukkit.event.world.StructureGrowEvent;
 import org.bukkit.inventory.ItemStack;
 
 import com.bekvon.bukkit.residence.Residence;
@@ -181,20 +179,18 @@ public class ResidenceListener1_17 implements Listener {
         Player player = event.getPlayer();
 
         if (player != null) {
-            if (ResAdmin.isResAdmin(player))
+            if (ResPerm.bypass_build.hasPermission(player, 10000L))
                 return;
-
-            // player not click-position build permission, cancel event immediately
+            // cancel event if player has no build permission at click-position
+            // non-saplings don't consume bone_meal on event cancel
             if (FlagPermissions.has(block.getLocation(), player, Flags.build, FlagCombo.OnlyFalse)) {
                 lm.Flag_Deny.sendMessage(player, Flags.build);
                 event.setCancelled(true);
                 return;
             }
         }
-
-        // player has click-position build permission or event is not player-triggered
-        // check fertilize-spread blocks location build permission
-
+        // player has build permission at click position, or event is not triggered by player
+        // check build permission for the location of fertilize-spread blocks
         ClaimedResidence originRes = ClaimedResidence.getByLoc(block.getLocation());
 
         List<BlockState> blocks = new ArrayList<BlockState>(event.getBlocks());
@@ -216,29 +212,6 @@ public class ResidenceListener1_17 implements Listener {
                 }
             }
         }
-    }
 
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onPlayerFertilizeTree(StructureGrowEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.build.isGlobalyEnabled())
-            return;
-
-        Location loc = event.getLocation();
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(loc.getWorld()))
-            return;
-
-        Player player = event.getPlayer();
-        if (player == null)
-            return;
-
-        if (ResAdmin.isResAdmin(player))
-            return;
-
-        if (FlagPermissions.has(loc, player, Flags.build, FlagCombo.OnlyFalse)) {
-            lm.Flag_Deny.sendMessage(player, Flags.build);
-            event.setCancelled(true);
-        }
     }
 }
