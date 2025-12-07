@@ -117,7 +117,7 @@ public class ResidenceListener1_13 implements Listener {
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onProjectileHitButtonPlate(ProjectileHitEvent event) {
+    public void onEntityTouchButtonPlateDenyMsg(ProjectileHitEvent event) {
         // Disabling listener if flag disabled globally
         if (!Flags.use.isGlobalyEnabled())
             return;
@@ -132,64 +132,35 @@ public class ResidenceListener1_13 implements Listener {
 
         @NotNull
         CMIMaterial cmat = CMIMaterial.get(block.getType());
-        boolean isButton = cmat.isButton();
-        boolean isPlate = cmat.isPlate();
 
-        if (!isButton && !isPlate)
-            return;
-
-        ClaimedResidence res = ClaimedResidence.getByLoc(block.getLocation());
-        if (res != null && res.getRaid().isUnderRaid())
+        if (!cmat.isButton() && !cmat.isPlate())
             return;
 
         Player player = Utils.potentialProjectileToPlayer(event.getEntity());
-        if (player != null) {
+        if (player == null)
+            return;
 
-            if (ResAdmin.isResAdmin(player))
+        if (ResAdmin.isResAdmin(player))
+            return;
+
+        FlagPermissions perms = FlagPermissions.getPerms(block.getLocation(), player);
+        boolean hasUse = perms.playerHas(player, Flags.use, true);
+
+        if (cmat.isButton()) {
+            if (perms.playerHas(player, Flags.button, hasUse))
                 return;
 
-            FlagPermissions perms = FlagPermissions.getPerms(block.getLocation(), player);
-            boolean hasUse = perms.playerHas(player, Flags.use, true);
-
-            if (isButton) {
-                if (perms.playerHas(player, Flags.button, hasUse))
-                    return;
-
-                // The perfect spot, the earlier check sends exactly one deny msgs
-                // Deny msgs for the EntityInteractEvent below to avoid chat spam
-                lm.Flag_Deny.sendMessage(player, Flags.button);
-
-            } else {
-                if (perms.playerHas(player, Flags.pressure, hasUse))
-                    return;
-
-                lm.Flag_Deny.sendMessage(player, Flags.pressure);
-
-            }
+            // The perfect spot, the earlier check sends exactly one deny msgs
+            // Deny msgs for the EntityInteractEvent below to avoid chat spam
+            lm.Flag_Deny.sendMessage(player, Flags.button);
 
         } else {
-            // Entity not player source
-            // Check potential block as a shooter which should be allowed if its inside same
-            // residence
-            if (Utils.isSourceBlockInsideSameResidence(event.getEntity(), res))
+            if (perms.playerHas(player, Flags.pressure, hasUse))
                 return;
 
-            FlagPermissions perms = FlagPermissions.getPerms(block.getLocation());
-            boolean hasUse = perms.has(Flags.use, true);
+            lm.Flag_Deny.sendMessage(player, Flags.pressure);
 
-            if (isButton) {
-                if (perms.has(Flags.button, hasUse))
-                    return;
-
-            } else {
-                if (perms.has(Flags.pressure, hasUse))
-                    return;
-
-            }
         }
-
-        event.setCancelled(true);
-
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
