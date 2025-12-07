@@ -183,11 +183,9 @@ public class ResidenceListener1_13 implements Listener {
 
         @NotNull
         CMIMaterial cmat = CMIMaterial.get(block.getType());
-        boolean isButton = cmat.isButton();
-        boolean isPlate = cmat.isPlate();
 
         // Only check Button and Plate
-        if (!isButton && !isPlate)
+        if (!cmat.isButton() && !cmat.isPlate())
             return;
 
         // Only get projectile player source
@@ -200,7 +198,7 @@ public class ResidenceListener1_13 implements Listener {
             FlagPermissions perms = FlagPermissions.getPerms(block.getLocation(), player);
             boolean hasUse = perms.playerHas(player, Flags.use, true);
 
-            if (isButton) {
+            if (cmat.isButton()) {
                 if (perms.playerHas(player, Flags.button, hasUse))
                     return;
 
@@ -220,7 +218,7 @@ public class ResidenceListener1_13 implements Listener {
             FlagPermissions perms = FlagPermissions.getPerms(block.getLocation());
             boolean hasUse = perms.has(Flags.use, true);
 
-            if (isButton) {
+            if (cmat.isButton()) {
                 if (perms.has(Flags.button, hasUse))
                     return;
 

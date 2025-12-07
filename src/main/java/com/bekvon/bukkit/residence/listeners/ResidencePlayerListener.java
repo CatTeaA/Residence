@@ -972,6 +972,7 @@ public class ResidencePlayerListener implements Listener {
         switch (mat.name()) {
         case "ITEM_FRAME":
         case "BEACON":
+        case "BELL":
         case "FLOWER_POT":
         case "COMMAND":
         case "ANVIL":
@@ -1427,17 +1428,10 @@ public class ResidencePlayerListener implements Listener {
         CMIMaterial heldItem = CMIMaterial.get(iih);
 
         Material mat = block.getType();
-        CMIMaterial blockM = CMIMaterial.get(block.getType());
 
-        if (!(event.getAction() == Action.PHYSICAL || (isContainer(mat, block) || isCanUseEntity_RClickOnly(mat, block))
-                && event.getAction() == Action.RIGHT_CLICK_BLOCK || isCanUseEntity_BothClick(mat, block))
-                && !heldItem.equals(plugin.getConfigManager().getSelectionTool())
-                && !heldItem.equals(plugin.getConfigManager().getInfoTool())
-                && (!heldItem.isDye() && !heldItem.equals(CMIMaterial.GLOW_INK_SAC))
-                && !heldItem.equals(CMIMaterial.ARMOR_STAND)
-                && !heldItem.isBoat()
-                && !placingMinecart(block, iih)
-                && !blockM.equals(CMIMaterial.BELL)) {
+        if (!(event.getAction() == Action.PHYSICAL || (isContainer(mat, block) || isCanUseEntity_RClickOnly(mat, block)) && event.getAction() == Action.RIGHT_CLICK_BLOCK
+                || isCanUseEntity_BothClick(mat, block)) && !heldItem.equals(plugin.getConfigManager().getSelectionTool()) && !heldItem.equals(plugin.getConfigManager().getInfoTool())
+                && (!heldItem.isDye() && !heldItem.equals(CMIMaterial.GLOW_INK_SAC)) && !heldItem.equals(CMIMaterial.ARMOR_STAND) && !heldItem.isBoat() && !placingMinecart(block, iih)) {
             return;
         }
 
@@ -1459,6 +1453,8 @@ public class ResidencePlayerListener implements Listener {
         FlagPermissions perms = FlagPermissions.getPerms(block.getLocation(), player);
 
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+
+            CMIMaterial blockM = CMIMaterial.get(mat);
 
             if (heldItem.equals(CMIMaterial.BONE_MEAL)) {
                 FlagPermissions tperms = FlagPermissions.getPerms(block.getRelative(event.getBlockFace()).getLocation(), player);
@@ -1483,7 +1479,7 @@ public class ResidencePlayerListener implements Listener {
 
             }
 
-            if (blockM.equals(CMIMaterial.BELL) && !perms.playerHas(player, Flags.use, true)) {
+            if (blockM.isSign() && !perms.playerHas(player, Flags.use, true)) {
                 lm.Flag_Deny.sendMessage(player, Flags.use);
                 event.setCancelled(true);
                 return;

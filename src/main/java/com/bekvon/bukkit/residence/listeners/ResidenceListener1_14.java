@@ -1,5 +1,6 @@
 package com.bekvon.bukkit.residence.listeners;
 
+import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -22,7 +23,6 @@ import com.bekvon.bukkit.residence.protection.FlagPermissions.FlagCombo;
 import com.bekvon.bukkit.residence.utils.Utils;
 
 import net.Zrips.CMILib.Logs.CMIDebug;
-import net.Zrips.CMILib.Items.CMIMaterial;
 
 public class ResidenceListener1_14 implements Listener {
 
@@ -117,9 +117,7 @@ public class ResidenceListener1_14 implements Listener {
         if (plugin.isDisabledWorldListener(block.getWorld()))
             return;
 
-        CMIMaterial cmat = CMIMaterial.get(block.getType());
-
-        if (!cmat.equals(CMIMaterial.BELL))
+        if (block.getType() != Material.BELL)
             return;
 
         Player player = Utils.potentialProjectileToPlayer(event.getEntity());

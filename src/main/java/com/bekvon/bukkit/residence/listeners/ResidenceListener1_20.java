@@ -93,7 +93,7 @@ public class ResidenceListener1_20 implements Listener {
         boolean hasUse = perms.playerHas(player, Flags.use, FlagCombo.TrueOrNone);
         boolean hasBuild = perms.playerHas(player, Flags.build, FlagCombo.TrueOrNone);
 
-        if (hasUse || hasBuild || ResAdmin.isResAdmin(player))
+        if (hasUse && hasBuild || ResAdmin.isResAdmin(player))
             return;
 
         event.setCancelled(true);
