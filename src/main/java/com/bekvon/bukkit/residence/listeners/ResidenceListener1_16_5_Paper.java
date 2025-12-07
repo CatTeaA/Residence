@@ -1,7 +1,6 @@
 package com.bekvon.bukkit.residence.listeners;
 
 import org.bukkit.block.Block;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -38,34 +37,30 @@ public class ResidenceListener1_16_5_Paper implements Listener {
         if (plugin.isDisabledWorldListener(block.getWorld()))
             return;
 
-        if (ProjectileHitBlock(event.getEntity(), block)) {
-            event.setCancelled(true);
-        }
-    }
-
-    public static boolean ProjectileHitBlock(Entity entity, Block block) {
-        Player player = Utils.potentialProjectileToPlayer(entity);
+        Player player = Utils.potentialProjectileToPlayer(event.getEntity());
         if (player != null) {
 
             if (ResAdmin.isResAdmin(player))
-                return false;
+                return;
 
             if (FlagPermissions.has(block.getLocation(), player, Flags.use, true))
-                return false;
+                return;
 
-            lm.Flag_Deny.sendMessage(entity, Flags.use);
+            lm.Flag_Deny.sendMessage(player, Flags.use);
+            event.setCancelled(true);
 
         } else {
             // Entity not player source
             // Check potential block as a shooter which should be allowed if its inside same
             // residence
-            if (Utils.isSourceBlockInsideSameResidence(entity, ClaimedResidence.getByLoc(block.getLocation())))
-                return false;
+            if (Utils.isSourceBlockInsideSameResidence(event.getEntity(), ClaimedResidence.getByLoc(block.getLocation())))
+                return;
 
             if (FlagPermissions.has(block.getLocation(), Flags.use, true))
-                return false;
+                return;
+
+            event.setCancelled(true);
 
         }
-        return true;
     }
 }
