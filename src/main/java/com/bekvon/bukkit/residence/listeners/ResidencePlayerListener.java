@@ -1427,11 +1427,17 @@ public class ResidencePlayerListener implements Listener {
         CMIMaterial heldItem = CMIMaterial.get(iih);
 
         Material mat = block.getType();
+        CMIMaterial blockM = CMIMaterial.get(block.getType());
 
-        if (!(event.getAction() == Action.PHYSICAL || (isContainer(mat, block) || isCanUseEntity_RClickOnly(mat, block)) && event.getAction() == Action.RIGHT_CLICK_BLOCK
-                || isCanUseEntity_BothClick(mat, block)) && !heldItem.equals(plugin.getConfigManager().getSelectionTool()) && !heldItem.equals(plugin.getConfigManager().getInfoTool())
-                && (!heldItem.isDye() && !heldItem.equals(CMIMaterial.GLOW_INK_SAC)) && !heldItem.equals(CMIMaterial.ARMOR_STAND) && !heldItem.isBoat() && !placingMinecart(block, iih)
-                && !CMIMaterial.get(block.getType()).equals(CMIMaterial.BELL)) {
+        if (!(event.getAction() == Action.PHYSICAL || (isContainer(mat, block) || isCanUseEntity_RClickOnly(mat, block))
+                && event.getAction() == Action.RIGHT_CLICK_BLOCK || isCanUseEntity_BothClick(mat, block))
+                && !heldItem.equals(plugin.getConfigManager().getSelectionTool())
+                && !heldItem.equals(plugin.getConfigManager().getInfoTool())
+                && (!heldItem.isDye() && !heldItem.equals(CMIMaterial.GLOW_INK_SAC))
+                && !heldItem.equals(CMIMaterial.ARMOR_STAND)
+                && !heldItem.isBoat()
+                && !placingMinecart(block, iih)
+                && !blockM.equals(CMIMaterial.BELL)) {
             return;
         }
 
@@ -1453,8 +1459,6 @@ public class ResidencePlayerListener implements Listener {
         FlagPermissions perms = FlagPermissions.getPerms(block.getLocation(), player);
 
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-
-            CMIMaterial blockM = CMIMaterial.get(block.getType());
 
             if (heldItem.equals(CMIMaterial.BONE_MEAL)) {
                 FlagPermissions tperms = FlagPermissions.getPerms(block.getRelative(event.getBlockFace()).getLocation(), player);
