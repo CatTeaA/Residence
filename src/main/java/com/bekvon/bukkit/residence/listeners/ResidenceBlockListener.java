@@ -854,7 +854,7 @@ public class ResidenceBlockListener implements Listener {
             return;
 
         // check targetRes Flag_build
-        if (targetRes.getPermissions().has(Flags.build,  true))
+        if (targetRes.getPermissions().has(Flags.build, true))
             return;
 
         event.setCancelled(true);
