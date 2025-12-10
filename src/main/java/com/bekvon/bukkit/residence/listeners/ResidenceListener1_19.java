@@ -100,31 +100,31 @@ public class ResidenceListener1_19 implements Listener {
         ClaimedResidence sourceRes = ClaimedResidence.getByLoc(source.getLocation());
         ClaimedResidence destRes = ClaimedResidence.getByLoc(dest.getLocation());
 
-        // ignore source & dest not in Res
+        // source & dest not in Res
         if (sourceRes == null && destRes == null)
             return;
 
-        // ignore source & dest in Same Res
-        // ignore have the same residence owner
-        if (sourceRes != null && destRes != null &&
-                (sourceRes.equals(destRes) || sourceRes.isOwner(destRes.getOwner())))
-            return;
+        // source & dest in Res
+        if (sourceRes != null && destRes != null) {
 
-        // source & dest not in Same Res
-        if (sourceRes != null && destRes != null && !sourceRes.equals(destRes)) {
+            // in Same Res, or have Same Res owner
+            if (sourceRes.equals(destRes) || sourceRes.isOwner(destRes.getOwner()))
+                return;
 
+            // not in Same Res & not Same Res owner
+            // hopper can be source or dest
             if (sourceRes.getPermissions().has(Flags.container, true) &&
                     destRes.getPermissions().has(Flags.container, true))
                 return;
 
-            // source in Res, dest not in Res
-        } else if (sourceRes != null && destRes == null) {
+            // source in Res, destRes definitely not in Res
+        } else if (sourceRes != null) {
 
             if (sourceRes.getPermissions().has(Flags.container, true))
                 return;
 
-            // dest in Res, source not in Res
-        } else if (sourceRes == null && destRes != null) {
+            // dest definitely in Res, source definitely not in Res
+        } else {
 
             if (destRes.getPermissions().has(Flags.container, true))
                 return;

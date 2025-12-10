@@ -849,9 +849,8 @@ public class ResidenceBlockListener implements Listener {
 
         ClaimedResidence sourceRes = ClaimedResidence.getByLoc(block.getLocation());
 
-        // source & target in same Res, or have the same residence owner
-        if (sourceRes !=null &&
-                (sourceRes.equals(targetRes) || sourceRes.isOwner(targetRes.getOwner())))
+        // source & target in Same Res, or have Same Res owner
+        if (sourceRes !=null && (sourceRes.equals(targetRes) || sourceRes.isOwner(targetRes.getOwner())))
             return;
 
         // check targetRes Flag_build
