@@ -209,7 +209,7 @@ public class ResidenceListener1_17 implements Listener {
                     event.getBlocks().remove(oneBlock);
 
             } else if (spreadRes.getPermissions().has(Flags.build, FlagCombo.OnlyFalse)) {
-                    event.getBlocks().remove(oneBlock);
+                event.getBlocks().remove(oneBlock);
 
             }
         }
