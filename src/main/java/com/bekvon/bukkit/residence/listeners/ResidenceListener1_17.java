@@ -203,14 +203,14 @@ public class ResidenceListener1_17 implements Listener {
                 continue;
 
             if (player != null) {
-                if (spreadRes.getPermissions().playerHas(player, Flags.build, FlagCombo.OnlyFalse)) {
+                if (spreadRes.getPermissions().playerHas(player, Flags.build, FlagCombo.OnlyFalse))
                     event.getBlocks().remove(oneBlock);
-                }
-                // origin-block & spread-block not in Same residence
-            } else if (originRes == null || !originRes.equals(spreadRes)) {
-                if (spreadRes.getPermissions().has(Flags.build, FlagCombo.OnlyFalse)) {
+
+                // origin-block & spread-block not in Same residence owner
+                // check spreadRes build permission
+            } else if (spreadRes.getPermissions().has(Flags.build, FlagCombo.OnlyFalse)) {
                     event.getBlocks().remove(oneBlock);
-                }
+
             }
         }
 
