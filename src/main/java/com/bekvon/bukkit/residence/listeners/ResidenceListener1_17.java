@@ -196,18 +196,19 @@ public class ResidenceListener1_17 implements Listener {
         List<BlockState> blocks = new ArrayList<BlockState>(event.getBlocks());
 
         for (BlockState oneBlock : blocks) {
-            ClaimedResidence res = ClaimedResidence.getByLoc(oneBlock.getLocation());
+            ClaimedResidence spreadRes = ClaimedResidence.getByLoc(oneBlock.getLocation());
             // event-spread-block not in residence, skip check
-            if (res == null)
+            // origin-block & spread-block have the same residence owner, skip check
+            if (spreadRes == null || (originRes != null && originRes.isOwner(spreadRes.getOwner())))
                 continue;
 
             if (player != null) {
-                if (res.getPermissions().playerHas(player, Flags.build, FlagCombo.OnlyFalse)) {
+                if (spreadRes.getPermissions().playerHas(player, Flags.build, FlagCombo.OnlyFalse)) {
                     event.getBlocks().remove(oneBlock);
                 }
-                // event-origin-block & event-spread-block not in Same residence
-            } else if (originRes == null || !originRes.equals(res)) {
-                if (res.getPermissions().has(Flags.build, FlagCombo.OnlyFalse)) {
+                // origin-block & spread-block not in Same residence
+            } else if (originRes == null || !originRes.equals(spreadRes)) {
+                if (spreadRes.getPermissions().has(Flags.build, FlagCombo.OnlyFalse)) {
                     event.getBlocks().remove(oneBlock);
                 }
             }
