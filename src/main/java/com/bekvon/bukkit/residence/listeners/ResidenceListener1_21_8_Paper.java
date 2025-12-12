@@ -30,7 +30,7 @@ public class ResidenceListener1_21_8_Paper implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onKnockbackTest(EntityKnockbackEvent event) {
 
-        if (event.getCause() != io.papermc.paper.event.entity.EntityKnockbackEvent.Cause.EXPLOSION)
+        if (event.getCause() != io.papermc.paper.event.entity.EntityKnockbackEvent.Cause.DAMAGE)
             return;
 
         Entity entity =  event.getEntity();
