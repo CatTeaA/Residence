@@ -16,6 +16,7 @@ import com.bekvon.bukkit.residence.protection.FlagPermissions;
 import com.bekvon.bukkit.residence.protection.FlagPermissions.FlagCombo;
 import com.bekvon.bukkit.residence.utils.Utils;
 
+import io.papermc.paper.event.entity.EntityKnockbackEvent;
 import io.papermc.paper.event.entity.EntityPushedByEntityAttackEvent;
 
 public class ResidenceListener1_21_8_Paper implements Listener {
@@ -24,6 +25,38 @@ public class ResidenceListener1_21_8_Paper implements Listener {
 
     public ResidenceListener1_21_8_Paper(Residence plugin) {
         this.plugin = plugin;
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onKnockbackTest(EntityKnockbackEvent event) {
+
+        if (event.getCause() != io.papermc.paper.event.entity.EntityKnockbackEvent.Cause.EXPLOSION)
+            return;
+
+        Entity entity =  event.getEntity();
+        Location loc = entity.getLocation();
+
+        if (Utils.isAnimal(entity)) {
+            if (FlagPermissions.has(loc, Flags.animalkilling, FlagCombo.OnlyFalse))
+                event.setCancelled(true);
+
+        } else if (ResidenceEntityListener.isMonster(entity)) {
+            if (FlagPermissions.has(loc, Flags.mobkilling, FlagCombo.OnlyFalse))
+                event.setCancelled(true);
+
+        } else if (entity instanceof Player) {
+            if (FlagPermissions.has(loc, Flags.pvp, FlagCombo.OnlyFalse))
+                event.setCancelled(true);
+
+        } else if (entity instanceof Boat || entity instanceof Minecart) {
+            if (FlagPermissions.has(loc, Flags.vehicledestroy, FlagCombo.OnlyFalse))
+                event.setCancelled(true);
+
+        } else if (entity.getType().equals(EntityType.ARMOR_STAND)) {
+            if (FlagPermissions.has(loc, Flags.destroy, FlagCombo.OnlyFalse))
+                event.setCancelled(true);
+
+        }
     }
 
     @EventHandler
