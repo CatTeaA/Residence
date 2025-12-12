@@ -16,7 +16,6 @@ import com.bekvon.bukkit.residence.protection.FlagPermissions;
 import com.bekvon.bukkit.residence.protection.FlagPermissions.FlagCombo;
 import com.bekvon.bukkit.residence.utils.Utils;
 
-import org.bukkit.event.entity.EntityKnockbackByEntityEvent;
 import io.papermc.paper.event.entity.EntityPushedByEntityAttackEvent;
 
 public class ResidenceListener1_21_8_Paper implements Listener {
@@ -71,11 +70,5 @@ public class ResidenceListener1_21_8_Paper implements Listener {
                 return true;
         }
         return false;
-    }
-
-    @EventHandler
-    public void onKnockback(EntityKnockbackByEntityEvent event) {
-        if (shouldCancelKnockBack(event.getEntity(), event.getSourceEntity()))
-            event.setCancelled(true);
     }
 }
