@@ -135,6 +135,7 @@ public class ResidenceEntityListener implements Listener {
             } else {
                 List<Entity> passengers = entity.getPassengers();
                 if (!passengers.isEmpty()) {
+                    // first passenger
                     Entity rider = passengers.get(0);
                     riderPlayer = rider instanceof Player ? (Player) rider : null;
                 }
