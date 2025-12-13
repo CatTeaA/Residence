@@ -119,18 +119,10 @@ public class ResidenceEntityListener implements Listener {
             if (FlagPermissions.has(block.getLocation(), Flags.destroy, FlagCombo.OnlyFalse))
                 event.setCancelled(true);
 
-        } else if (CMIMaterial.get(block.getType()).equals(CMIMaterial.LILY_PAD)) {
-            Entity entity = event.getEntity();
-
-            if (entity instanceof Player) {
-                if (FlagPermissions.has(block.getLocation(), (Player) entity, Flags.destroy, FlagCombo.OnlyFalse))
-                    event.setCancelled(true);
-
-            } else if (entity instanceof Boat) {
-                if (FlagPermissions.has(block.getLocation(), Flags.destroy, FlagCombo.OnlyFalse))
-                    event.setCancelled(true);
-
-            }
+            // Lily_Pad
+        } else if (event.getEntity() instanceof Boat) {
+            if (FlagPermissions.has(block.getLocation(), Flags.destroy, FlagCombo.OnlyFalse))
+                event.setCancelled(true);
         }
     }
 
