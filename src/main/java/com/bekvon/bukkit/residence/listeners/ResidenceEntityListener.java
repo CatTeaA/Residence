@@ -123,6 +123,9 @@ public class ResidenceEntityListener implements Listener {
                 event.setCancelled(true);
 
         } else if (entity instanceof Boat) {
+            if (!CMIMaterial.get(block.getType()).equals(CMIMaterial.LILY_PAD))
+                return;
+
             Player riderPlayer = null;
 
             if (Version.isCurrentEqualOrLower(Version.v1_11_R1)) {
