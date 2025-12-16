@@ -331,8 +331,6 @@ public class ResidenceBlockListener implements Listener {
 
     public static final String SourceResidenceName = "SourceResidenceName";
 
-    public static final String SourceResidenceName = "SourceResidenceName";
-
     @EventHandler
     public void onEntityChangeBlock(EntityChangeBlockEvent event) {
         // Disabling listener if flag disabled globally
