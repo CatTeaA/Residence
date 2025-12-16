@@ -331,10 +331,16 @@ public class ResidenceBlockListener implements Listener {
 
     public static final String SourceResidenceName = "SourceResidenceName";
 
+    public static final String SourceResidenceName = "SourceResidenceName";
+
     @EventHandler
     public void onEntityChangeBlock(EntityChangeBlockEvent event) {
         // Disabling listener if flag disabled globally
         if (!Flags.fallinprotection.isGlobalyEnabled())
+            return;
+
+        Entity ent = event.getEntity();
+        if (!(ent instanceof FallingBlock))
             return;
 
         Block block = event.getBlock();
@@ -342,10 +348,6 @@ public class ResidenceBlockListener implements Listener {
             event.setCancelled(true);
             return;
         }
-
-        Entity ent = event.getEntity();
-        if (!(ent instanceof FallingBlock))
-            return;
 
         if (!ent.hasMetadata(SourceResidenceName) && /*
                                                       * Equals to air when generic falling block is spawned, not when falling block
