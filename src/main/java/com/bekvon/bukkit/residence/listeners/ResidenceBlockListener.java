@@ -18,6 +18,7 @@ import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.type.Dispenser;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Snowman;
 import org.bukkit.event.EventHandler;
@@ -335,15 +336,15 @@ public class ResidenceBlockListener implements Listener {
         // Disabling listener if flag disabled globally
         if (!Flags.fallinprotection.isGlobalyEnabled())
             return;
-        if (event.getEntityType() != EntityType.FALLING_BLOCK)
-            return;
+
         Entity ent = event.getEntity();
-        CMIMaterial cmat = CMIMaterial.get(event.getTo());
+        if (!(ent instanceof FallingBlock))
+            return;
 
         if (!ent.hasMetadata(SourceResidenceName) && /*
                                                       * Equals to air when generic falling block is spawned, not when falling block
                                                       * originates from spawnegg
-                                                      */ (cmat.equals(CMIMaterial.AIR) || cmat.equals(CMIMaterial.SCAFFOLDING))) {
+                                                      */ event.getTo() == Material.AIR) {
 
             ClaimedResidence res = plugin.getResidenceManager().getByLoc(ent.getLocation());
             String resName = res == null ? "NULL" : res.getName();
@@ -362,6 +363,12 @@ public class ResidenceBlockListener implements Listener {
                 saved = ent.getMetadata(SourceResidenceName).get(0).asString();
 
             if (res != null && !saved.equalsIgnoreCase(resName)) {
+                if (Version.isCurrentEqualOrHigher(Version.v1_20_R1)) {
+                    FallingBlock fallingBlock = (FallingBlock) ent;
+                    event.setCancelled(true);
+                    fallingBlock.setCancelDrop(true);
+                    return;
+                }
                 event.setCancelled(true);
                 ent.remove();
             }
