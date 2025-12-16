@@ -342,20 +342,21 @@ public class ResidenceBlockListener implements Listener {
         if (!(ent instanceof FallingBlock))
             return;
 
-        FallingBlock fallingBlock = (FallingBlock) ent;
+        FallingBlock fb = (FallingBlock) ent;
         CMIMaterial cmat = CMIMaterial.get(event.getTo());
 
-        if (!fallingBlock.hasMetadata(SourceResidenceName) && /*
+        if (!fb.hasMetadata(SourceResidenceName) && /*
          * Equals to air when generic falling block is spawned, not when falling block
          * originates from spawnegg
          */ (cmat.equals(CMIMaterial.AIR) || cmat.equals(CMIMaterial.SCAFFOLDING))) {
 
-            ClaimedResidence res = plugin.getResidenceManager().getByLoc(fallingBlock.getLocation());
+            Location sourceLoc = fb.getLocation().clone();
+            ClaimedResidence res = plugin.getResidenceManager().getByLoc(sourceLoc);
             String resName = res == null ? "NULL" : res.getName();
-            fallingBlock.setMetadata(SourceResidenceName, new FixedMetadataValue(plugin, resName));
+            fb.setMetadata(SourceResidenceName, new FixedMetadataValue(plugin, resName));
         } else {
 
-            ClaimedResidence res = plugin.getResidenceManager().getByLoc(fallingBlock.getLocation());
+            ClaimedResidence res = plugin.getResidenceManager().getByLoc(fb.getLocation());
 
             if (res != null && res.getPermissions().has(Flags.fallinprotection, FlagCombo.OnlyFalse))
                 return;
@@ -363,16 +364,12 @@ public class ResidenceBlockListener implements Listener {
             String resName = res == null ? "NULL" : res.getName();
 
             String saved = "NULL";
-            if (fallingBlock.hasMetadata(SourceResidenceName))
-                saved = fallingBlock.getMetadata(SourceResidenceName).get(0).asString();
+            if (fb.hasMetadata(SourceResidenceName))
+                saved = fb.getMetadata(SourceResidenceName).get(0).asString();
 
             if (res != null && !saved.equalsIgnoreCase(resName)) {
-                if (Version.isCurrentEqualOrHigher(Version.v1_20_R1)) {
-                    event.setCancelled(true);
-                    return;
-                }
                 event.setCancelled(true);
-                fallingBlock.remove();
+                fb.remove();
             }
         }
     }
