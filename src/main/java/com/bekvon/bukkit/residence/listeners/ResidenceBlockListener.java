@@ -338,20 +338,23 @@ public class ResidenceBlockListener implements Listener {
             return;
 
         Entity ent = event.getEntity();
+
         if (!(ent instanceof FallingBlock))
             return;
 
-        if (!ent.hasMetadata(SourceResidenceName) && /*
+        FallingBlock fallingBlock = (FallingBlock) ent;
+
+        if (!fallingBlock.hasMetadata(SourceResidenceName) && /*
                                                       * Equals to air when generic falling block is spawned, not when falling block
                                                       * originates from spawnegg
                                                       */ event.getTo() == Material.AIR) {
 
-            ClaimedResidence res = plugin.getResidenceManager().getByLoc(ent.getLocation());
+            ClaimedResidence res = plugin.getResidenceManager().getByLoc(fallingBlock.getLocation());
             String resName = res == null ? "NULL" : res.getName();
-            ent.setMetadata(SourceResidenceName, new FixedMetadataValue(plugin, resName));
+            fallingBlock.setMetadata(SourceResidenceName, new FixedMetadataValue(plugin, resName));
         } else {
 
-            ClaimedResidence res = plugin.getResidenceManager().getByLoc(ent.getLocation());
+            ClaimedResidence res = plugin.getResidenceManager().getByLoc(fallingBlock.getLocation());
 
             if (res != null && res.getPermissions().has(Flags.fallinprotection, FlagCombo.OnlyFalse))
                 return;
@@ -359,18 +362,16 @@ public class ResidenceBlockListener implements Listener {
             String resName = res == null ? "NULL" : res.getName();
 
             String saved = "NULL";
-            if (ent.hasMetadata(SourceResidenceName))
-                saved = ent.getMetadata(SourceResidenceName).get(0).asString();
+            if (fallingBlock.hasMetadata(SourceResidenceName))
+                saved = fallingBlock.getMetadata(SourceResidenceName).get(0).asString();
 
             if (res != null && !saved.equalsIgnoreCase(resName)) {
                 if (Version.isCurrentEqualOrHigher(Version.v1_20_R1)) {
-                    FallingBlock fallingBlock = (FallingBlock) ent;
-                    event.setCancelled(true);
                     fallingBlock.setCancelDrop(true);
                     return;
                 }
                 event.setCancelled(true);
-                ent.remove();
+                fallingBlock.remove();
             }
         }
     }
