@@ -338,11 +338,12 @@ public class ResidenceBlockListener implements Listener {
         if (event.getEntityType() != EntityType.FALLING_BLOCK)
             return;
         Entity ent = event.getEntity();
+        CMIMaterial cmat = CMIMaterial.get(event.getTo());
 
         if (!ent.hasMetadata(SourceResidenceName) && /*
                                                       * Equals to air when generic falling block is spawned, not when falling block
                                                       * originates from spawnegg
-                                                      */ event.getTo() == Material.AIR) {
+                                                      */ (cmat.equals(CMIMaterial.AIR) || cmat.equals(CMIMaterial.SCAFFOLDING))) {
 
             ClaimedResidence res = plugin.getResidenceManager().getByLoc(ent.getLocation());
             String resName = res == null ? "NULL" : res.getName();
