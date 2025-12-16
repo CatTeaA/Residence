@@ -5,13 +5,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -35,7 +33,6 @@ import com.bekvon.bukkit.residence.protection.FlagPermissions.FlagCombo;
 import net.Zrips.CMILib.CMILib;
 import net.Zrips.CMILib.Items.CMIMaterial;
 import net.Zrips.CMILib.Logs.CMIDebug;
-import net.Zrips.CMILib.Version.Version;
 
 public class ResidenceListener1_17 implements Listener {
 
@@ -217,40 +214,6 @@ public class ResidenceListener1_17 implements Listener {
 
             }
         }
-
-    }
-
-    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
-    public void onEntityChangeBlock(EntityChangeBlockEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.fallinprotection.isGlobalyEnabled())
-            return;
-
-        if (!Version.isPaperBranch())
-            return;
-
-        Entity ent = event.getEntity();
-        if (!(ent instanceof FallingBlock))
-            return;
-
-        Block block = event.getBlock();
-        ClaimedResidence destRes = ClaimedResidence.getByLoc(block.getLocation());
-        if (destRes == null)
-            return;
-
-        Location source = ent.getOrigin();
-        if (source == null)
-            return;
-
-        ClaimedResidence sourceRes = ClaimedResidence.getByLoc(source);
-
-        if (sourceRes != null && (sourceRes.equals(destRes) || destRes.isOwner(sourceRes.getOwner())))
-            return;
-
-        if (destRes.getPermissions().has(Flags.fallinprotection, FlagCombo.OnlyFalse))
-            return;
-
-        event.setCancelled(true);
 
     }
 }
