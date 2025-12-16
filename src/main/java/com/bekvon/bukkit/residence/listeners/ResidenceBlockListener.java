@@ -337,26 +337,27 @@ public class ResidenceBlockListener implements Listener {
         if (!Flags.fallinprotection.isGlobalyEnabled())
             return;
 
-        Entity ent = event.getEntity();
+        Block block = event.getBlock();
+        if (CMIMaterial.get(block.getType()).equals(CMIMaterial.SCAFFOLDING)) {
+            event.setCancelled(true);
+            return;
+        }
 
+        Entity ent = event.getEntity();
         if (!(ent instanceof FallingBlock))
             return;
 
-        FallingBlock fb = (FallingBlock) ent;
-        CMIMaterial cmat = CMIMaterial.get(event.getTo());
+        if (!ent.hasMetadata(SourceResidenceName) && /*
+                                                      * Equals to air when generic falling block is spawned, not when falling block
+                                                      * originates from spawnegg
+                                                      */ event.getTo() == Material.AIR) {
 
-        if (!fb.hasMetadata(SourceResidenceName) && /*
-         * Equals to air when generic falling block is spawned, not when falling block
-         * originates from spawnegg
-         */ (cmat.equals(CMIMaterial.AIR) || cmat.equals(CMIMaterial.SCAFFOLDING))) {
-
-            Location sourceLoc = fb.getLocation().clone();
-            ClaimedResidence res = plugin.getResidenceManager().getByLoc(sourceLoc);
+            ClaimedResidence res = plugin.getResidenceManager().getByLoc(ent.getLocation());
             String resName = res == null ? "NULL" : res.getName();
-            fb.setMetadata(SourceResidenceName, new FixedMetadataValue(plugin, resName));
+            ent.setMetadata(SourceResidenceName, new FixedMetadataValue(plugin, resName));
         } else {
 
-            ClaimedResidence res = plugin.getResidenceManager().getByLoc(fb.getLocation());
+            ClaimedResidence res = plugin.getResidenceManager().getByLoc(ent.getLocation());
 
             if (res != null && res.getPermissions().has(Flags.fallinprotection, FlagCombo.OnlyFalse))
                 return;
@@ -364,12 +365,12 @@ public class ResidenceBlockListener implements Listener {
             String resName = res == null ? "NULL" : res.getName();
 
             String saved = "NULL";
-            if (fb.hasMetadata(SourceResidenceName))
-                saved = fb.getMetadata(SourceResidenceName).get(0).asString();
+            if (ent.hasMetadata(SourceResidenceName))
+                saved = ent.getMetadata(SourceResidenceName).get(0).asString();
 
             if (res != null && !saved.equalsIgnoreCase(resName)) {
                 event.setCancelled(true);
-                fb.remove();
+                ent.remove();
             }
         }
     }
