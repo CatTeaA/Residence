@@ -18,7 +18,6 @@ import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.type.Dispenser;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
-import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Snowman;
 import org.bukkit.event.EventHandler;
@@ -336,16 +335,9 @@ public class ResidenceBlockListener implements Listener {
         // Disabling listener if flag disabled globally
         if (!Flags.fallinprotection.isGlobalyEnabled())
             return;
-
+        if (event.getEntityType() != EntityType.FALLING_BLOCK)
+            return;
         Entity ent = event.getEntity();
-        if (!(ent instanceof FallingBlock))
-            return;
-
-        Block block = event.getBlock();
-        if (CMIMaterial.get(block.getType()).equals(CMIMaterial.SCAFFOLDING)) {
-            event.setCancelled(true);
-            return;
-        }
 
         if (!ent.hasMetadata(SourceResidenceName) && /*
                                                       * Equals to air when generic falling block is spawned, not when falling block
