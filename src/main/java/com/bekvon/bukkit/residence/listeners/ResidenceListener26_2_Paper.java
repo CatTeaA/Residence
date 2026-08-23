@@ -32,18 +32,14 @@ public class ResidenceListener26_2_Paper implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onPlayerCollideWithEntity(EntityCollideWithEntityEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.push.isGlobalyEnabled()) {
-            return;
-        }
         // Get the two entities involved in the collision
         List<Entity> entities = event.getEntities();
         if (entities.size() < 2) {
             return;
         }
         Entity entity1 = entities.get(0);
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(entity1.getWorld())) {
+
+        if (FlagPermissions.shouldIgnoreCheck(Flags.push, entity1)) {
             return;
         }
         Entity entity2 = entities.get(1);

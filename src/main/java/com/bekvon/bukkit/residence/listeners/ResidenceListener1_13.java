@@ -142,15 +142,12 @@ public class ResidenceListener1_13 implements Listener {
         // 1.17+ has PlayerBucketEntityEvent
         if (Version.isCurrentEqualOrHigher(Version.v1_17_R1))
             return;
-        // Disabling listener if flag disabled globally
-        if (!Flags.animalkilling.isGlobalyEnabled())
-            return;
 
         Entity ent = event.getRightClicked();
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(ent.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.animalkilling, ent)) {
+            return;
+        }
         if (!(ent instanceof Fish))
             return;
 
@@ -161,14 +158,8 @@ public class ResidenceListener1_13 implements Listener {
         if (held != Material.WATER_BUCKET)
             return;
 
-        if (ResAdmin.isResAdmin(player))
-            return;
-
-        if (FlagPermissions.has(ent.getLocation(), player, Flags.animalkilling, true))
-            return;
-
-        lm.Flag_Deny.sendMessage(player, Flags.animalkilling);
-        event.setCancelled(true);
-
+        if (FlagPermissions.shouldDenyAndNotify(player, ent, Flags.animalkilling, null)) {
+            event.setCancelled(true);
+        }
     }
 }

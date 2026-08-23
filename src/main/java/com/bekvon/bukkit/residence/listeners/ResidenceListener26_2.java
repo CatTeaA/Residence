@@ -17,9 +17,7 @@ import org.bukkit.inventory.EquipmentSlot;
 
 import com.bekvon.bukkit.residence.Residence;
 import com.bekvon.bukkit.residence.containers.Flags;
-import com.bekvon.bukkit.residence.containers.ResAdmin;
 import com.bekvon.bukkit.residence.protection.FlagPermissions;
-import com.bekvon.bukkit.residence.containers.lm;
 
 public class ResidenceListener26_2 implements Listener {
 
@@ -31,13 +29,10 @@ public class ResidenceListener26_2 implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onPlayerIgniteTntSulfurCube(PlayerInteractEntityEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.ignite.isGlobalyEnabled()) {
-            return;
-        }
+
         Entity entity = event.getRightClicked();
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(entity.getWorld())) {
+
+        if (FlagPermissions.shouldIgnoreCheck(Flags.ignite, entity)) {
             return;
         }
         if (!(entity instanceof SulfurCube)) {
@@ -53,34 +48,24 @@ public class ResidenceListener26_2 implements Listener {
             return;
         }
         Player player = event.getPlayer();
-        if (ResAdmin.isResAdmin(player)) {
-            return;
-        }
-        FlagPermissions perms = FlagPermissions.getPerms(entity.getLocation(), player);
-        if (perms.playerHas(player, Flags.ignite, perms.playerHas(player, Flags.animalkilling, true))) {
-            return;
-        }
-        lm.Flag_Deny.sendMessage(player, Flags.ignite);
-        event.setCancelled(true);
 
+        if (FlagPermissions.shouldDenyAndNotify(player, entity, Flags.ignite, Flags.animalkilling)) {
+            event.setCancelled(true);
+        }
     }
 
     // fix https://github.com/PaperMC/Paper/issues/14149
     @EventHandler(priority = EventPriority.LOWEST) // Do not use (ignoreCancelled = true)
     public void onPlayerSulfurCubeBucketEmpty(PlayerInteractEvent event) {
+
         if (event.useItemInHand() == Result.DENY) {
-            return;
-        }
-        // Disabling listener if flag disabled globally
-        if (!Flags.build.isGlobalyEnabled()) {
             return;
         }
         Block block= event.getClickedBlock();
         if (block == null) {
             return;
         }
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(block.getWorld())) {
+        if (FlagPermissions.shouldIgnoreCheck(Flags.build, block)) {
             return;
         }
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
@@ -90,15 +75,9 @@ public class ResidenceListener26_2 implements Listener {
             return;
         }
         Player player = event.getPlayer();
-        if (ResAdmin.isResAdmin(player)) {
-            return;
-        }
-        if (FlagPermissions.has(block.getRelative(event.getBlockFace()).getLocation(),  player, Flags.build, true)) {
-            return;
-        }
 
-        lm.Flag_Deny.sendMessage(player, Flags.build);
-        event.setCancelled(true);
-
+        if (FlagPermissions.shouldDenyAndNotify(player, block.getRelative(event.getBlockFace()), Flags.build, null)) {
+            event.setCancelled(true);
+        }
     }
 }

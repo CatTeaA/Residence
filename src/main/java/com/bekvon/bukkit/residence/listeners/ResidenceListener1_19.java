@@ -17,11 +17,8 @@ import org.bukkit.event.player.PlayerInteractEvent;
 
 import com.bekvon.bukkit.residence.Residence;
 import com.bekvon.bukkit.residence.containers.Flags;
-import com.bekvon.bukkit.residence.containers.ResAdmin;
-import com.bekvon.bukkit.residence.containers.lm;
 import com.bekvon.bukkit.residence.protection.ClaimedResidence;
 import com.bekvon.bukkit.residence.protection.FlagPermissions;
-import com.bekvon.bukkit.residence.protection.FlagPermissions.FlagCombo;
 
 import net.Zrips.CMILib.Items.CMIMaterial;
 import net.Zrips.CMILib.Version.Version;
@@ -36,41 +33,29 @@ public class ResidenceListener1_19 implements Listener {
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onUseGoatHorn(PlayerInteractEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.goathorn.isGlobalyEnabled())
-            return;
 
         Player player = event.getPlayer();
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(player.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.goathorn, player)) {
+            return;
+        }
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK)
             return;
 
         if (CMIMaterial.get(event.getItem()) != CMIMaterial.GOAT_HORN)
             return;
 
-        if (player.hasMetadata("NPC") || ResAdmin.isResAdmin(player))
-            return;
-
-        FlagPermissions perms = FlagPermissions.getPerms(player.getLocation(), player);
-        if (perms.playerHas(player, Flags.goathorn, true))
-            return;
-
-        lm.Flag_Deny.sendMessage(player, Flags.goathorn);
-        event.setCancelled(true);
+        if (FlagPermissions.shouldDenyAndNotify(player, player, Flags.goathorn, null)) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onBlockSpread(BlockSpreadEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.skulk.isGlobalyEnabled())
-            return;
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(event.getBlock().getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.skulk, event.getBlock())) {
+            return;
+        }
         if (!Material.SCULK_CATALYST.equals(event.getSource().getType()))
             return;
 
@@ -129,26 +114,18 @@ public class ResidenceListener1_19 implements Listener {
     // riding InventoryVehicle: check Flag_container when opening Vehicle Inventory
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onPlayerOpenVehicleInv(InventoryOpenEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.container.isGlobalyEnabled())
-            return;
 
         Player player = (Player) event.getPlayer();
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(player.getWorld()))
+
+        if (FlagPermissions.shouldIgnoreCheck(Flags.container, player)) {
             return;
-
+        }
         Entity vehicle = player.getVehicle();
-        if (canHaveContainer1_19(vehicle)) {
 
-            if (ResAdmin.isResAdmin(player))
-                return;
-
-            FlagPermissions perms = FlagPermissions.getPerms(vehicle.getLocation(), player);
-            if (perms.playerHas(player, Flags.container, true))
-                return;
-
-            lm.Flag_Deny.sendMessage(player, Flags.container);
+        if (!canHaveContainer1_19(vehicle)) {
+            return;
+        }
+        if (FlagPermissions.shouldDenyAndNotify(player, vehicle, Flags.container, null)) {
             event.setCancelled(true);
         }
     }

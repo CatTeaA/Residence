@@ -75,7 +75,6 @@ import com.bekvon.bukkit.residence.protection.FlagPermissions.FlagCombo;
 import com.bekvon.bukkit.residence.utils.Utils;
 
 import net.Zrips.CMILib.ActionBar.CMIActionBar;
-import net.Zrips.CMILib.Entities.CMIEntity;
 import net.Zrips.CMILib.Entities.CMIEntityType;
 import net.Zrips.CMILib.Items.CMIMC;
 import net.Zrips.CMILib.Items.CMIMaterial;
@@ -158,15 +157,7 @@ public class ResidenceEntityListener implements Listener {
         } else {
             return false;
         }
-        if (player.hasMetadata("NPC") || ResAdmin.isResAdmin(player)) {
-            return false;
-        }
-        FlagPermissions perms = FlagPermissions.getPerms(block.getLocation(), player);
-        if (!perms.playerHas(player, flag, perms.playerHas(player, Flags.build, true))) {
-            lm.Flag_Deny.sendMessage(player, flag);
-            return true;
-        }
-        return false;
+        return FlagPermissions.shouldDenyAndNotify(player, block, flag, Flags.build);
     }
 
     private boolean shouldDenyBoatBreakLilyPad(Boat boat, Block block) {
@@ -376,16 +367,13 @@ public class ResidenceEntityListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST)
     public void AnimalKilling(EntityDamageEvent event) {
 
-        // Disabling listener if flag disabled globally
-        if (!Flags.animalkilling.isGlobalyEnabled())
-            return;
         Entity entity = event.getEntity();
         if (entity == null)
             return;
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(entity.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.animalkilling, entity)) {
+            return;
+        }
         if (!Utils.isAnimal(entity))
             return;
 
@@ -428,18 +416,17 @@ public class ResidenceEntityListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void AnimalKillingByFlame(EntityCombustByEntityEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.animalkilling.isGlobalyEnabled())
-            return;
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(event.getEntity().getWorld()))
-            return;
+
         if (event.isCancelled())
             return;
 
         Entity entity = event.getEntity();
         if (entity == null)
             return;
+
+        if (FlagPermissions.shouldIgnoreCheck(Flags.animalkilling, entity)) {
+            return;
+        }
         if (!Utils.isAnimal(entity))
             return;
 
@@ -472,18 +459,17 @@ public class ResidenceEntityListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void AnimalDamageByMobs(EntityDamageByEntityEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.animalkilling.isGlobalyEnabled())
-            return;
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(event.getEntity().getWorld()))
-            return;
+
         if (event.isCancelled())
             return;
 
         Entity entity = event.getEntity();
         if (entity == null)
             return;
+
+        if (FlagPermissions.shouldIgnoreCheck(Flags.animalkilling, entity)) {
+            return;
+        }
         if (!Utils.isAnimal(entity))
             return;
 
@@ -525,18 +511,13 @@ public class ResidenceEntityListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST)
     public void VehicleDestroy(VehicleDestroyEvent event) {
 
-        // Disabling listener if flag disabled globally
-        if (!Flags.vehicledestroy.isGlobalyEnabled())
-            return;
-
-        // disabling event on world
         Entity damager = event.getAttacker();
         if (damager == null)
             return;
 
-        if (plugin.isDisabledWorldListener(damager.getWorld()))
+        if (FlagPermissions.shouldIgnoreCheck(Flags.vehicledestroy, damager)) {
             return;
-
+        }
         Vehicle vehicle = event.getVehicle();
 
         if (shouldBlockVehicleDestroy(damager, vehicle))
@@ -546,18 +527,13 @@ public class ResidenceEntityListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST)
     public void vehicleCombust(EntityCombustByEntityEvent event) {
 
-        // Disabling listener if flag disabled globally
-        if (!Flags.vehicledestroy.isGlobalyEnabled())
-            return;
-
-        // disabling event on world
         Entity damager = event.getCombuster();
         if (damager == null)
             return;
 
-        if (plugin.isDisabledWorldListener(damager.getWorld()))
+        if (FlagPermissions.shouldIgnoreCheck(Flags.vehicledestroy, damager)) {
             return;
-
+        }
         if (!(event.getEntity() instanceof Vehicle))
             return;
 
@@ -578,34 +554,23 @@ public class ResidenceEntityListener implements Listener {
         Player cause = Utils.potentialProjectileToPlayer(damager);
 
         if (cause != null) {
+            return FlagPermissions.shouldDenyAndNotify(cause, vehicle, Flags.vehicledestroy, null);
 
-            if (ResAdmin.isResAdmin(cause))
-                return false;
-
-            if (FlagPermissions.has(vehicle.getLocation(), cause, Flags.vehicledestroy, FlagCombo.OnlyFalse)) {
-                lm.Flag_Deny.sendMessage(cause, Flags.vehicledestroy);
-                return true;
-            }
-
-        } else if (FlagPermissions.has(vehicle.getLocation(), Flags.vehicledestroy, FlagCombo.OnlyFalse)) {
-            return true;
+        } else {
+            return FlagPermissions.has(vehicle.getLocation(), Flags.vehicledestroy, FlagCombo.OnlyFalse);
         }
-        return false;
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void MonsterKilling(EntityDamageByEntityEvent event) {
 
-        // Disabling listener if flag disabled globally
-        if (!Flags.mobkilling.isGlobalyEnabled())
-            return;
-        // disabling event on world
         Entity entity = event.getEntity();
         if (entity == null)
             return;
-        if (plugin.isDisabledWorldListener(entity.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.mobkilling, entity)) {
+            return;
+        }
         if (!isMonster(entity))
             return;
 
@@ -622,80 +587,54 @@ public class ResidenceEntityListener implements Listener {
         if (cause == null)
             return;
 
-        if (ResAdmin.isResAdmin(cause))
-            return;
-
-        if (FlagPermissions.has(entity.getLocation(), cause, Flags.mobkilling, true))
-            return;
-
-        lm.Flag_Deny.sendMessage(cause, Flags.mobkilling);
-        event.setCancelled(true);
+        if (FlagPermissions.shouldDenyAndNotify(cause, entity, Flags.mobkilling, null)) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void PlayerLeashEntityEvent(PlayerLeashEntityEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.leash.isGlobalyEnabled())
-            return;
 
         Entity entity = event.getEntity();
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(entity.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.leash, entity)) {
+            return;
+        }
         Player player = event.getPlayer();
 
-        if (ResAdmin.isResAdmin(player))
-            return;
-
-        FlagPermissions perms = FlagPermissions.getPerms(entity.getLocation(), player);
-        if (perms.playerHas(player, Flags.leash, true))
-            return;
-
-        lm.Flag_Deny.sendMessage(player, Flags.leash);
-
-        event.setCancelled(true);
+        if (FlagPermissions.shouldDenyAndNotify(player, entity, Flags.leash, null)) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onFenceLeashInteract(PlayerInteractEntityEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.leash.isGlobalyEnabled())
-            return;
 
         Entity entity = event.getRightClicked();
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(entity.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.leash, entity)) {
+            return;
+        }
         if (CMIEntityType.get(entity.getType()) != CMIEntityType.LEASH_KNOT)
             return;
 
         Player player = event.getPlayer();
-        if (ResAdmin.isResAdmin(player))
-            return;
 
-        FlagPermissions perms = FlagPermissions.getPerms(entity.getLocation(), player);
-        if (perms.playerHas(player, Flags.leash, true))
-            return;
-
-        lm.Flag_Deny.sendMessage(player, Flags.leash);
-
-        event.setCancelled(true);
+        if (FlagPermissions.shouldDenyAndNotify(player, entity, Flags.leash, null)) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onWitherSpawn(CreatureSpawnEvent event) {
 
-        // Disabling listener if flag disabled globally
-        if (!Flags.witherspawn.isGlobalyEnabled())
-            return;
-        // disabling event on world
         Entity ent = event.getEntity();
         if (ent == null)
             return;
-        if (plugin.isDisabledWorldListener(ent.getWorld()))
+
+        if (FlagPermissions.shouldIgnoreCheck(Flags.witherspawn, ent)) {
             return;
+        }
 
         if (ent.getType() != EntityType.WITHER)
             return;
@@ -711,16 +650,14 @@ public class ResidenceEntityListener implements Listener {
     public void onPhantomSpawn(CreatureSpawnEvent event) {
         if (Version.isCurrentLower(Version.v1_13_R1))
             return;
-        // Disabling listener if flag disabled globally
-        if (!Flags.phantomspawn.isGlobalyEnabled())
-            return;
-        // disabling event on world
+
         Entity ent = event.getEntity();
         if (ent == null)
             return;
-        if (plugin.isDisabledWorldListener(ent.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.phantomspawn, ent)) {
+            return;
+        }
         if (ent.getType() != EntityType.PHANTOM)
             return;
 
@@ -829,22 +766,16 @@ public class ResidenceEntityListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onHangingPlace(HangingPlaceEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.place.isGlobalyEnabled())
-            return;
-        // disabling event on world
+
         Player player = event.getPlayer();
         if (player == null)
             return;
-        if (plugin.isDisabledWorldListener(player.getWorld()))
-            return;
-        if (ResAdmin.isResAdmin(player))
-            return;
 
-        FlagPermissions perms = FlagPermissions.getPerms(event.getEntity().getLocation(), player);
-        if (!perms.playerHas(player, Flags.place, perms.playerHas(player, Flags.build, true))) {
+        if (FlagPermissions.shouldIgnoreCheck(Flags.place, player)) {
+            return;
+        }
+        if (FlagPermissions.shouldDenyAndNotify(player, event.getEntity(), Flags.place, Flags.build)) {
             event.setCancelled(true);
-            lm.Flag_Deny.sendMessage(player, Flags.place);
             player.updateInventory();
         }
     }
@@ -881,12 +812,7 @@ public class ResidenceEntityListener implements Listener {
         if (shooter instanceof Player) {
 
             Player player = (Player) shooter;
-            if (player.hasMetadata("NPC") || ResAdmin.isResAdmin(player)) {
-                return;
-            }
-            FlagPermissions perms = FlagPermissions.getPerms(projectile.getLocation(), player);
-            if (perms.playerHas(player, flag, FlagCombo.OnlyFalse)) {
-                lm.Flag_Deny.sendMessage(player, flag);
+            if (FlagPermissions.shouldDenyAndNotify(player, projectile, flag, null)) {
                 event.setCancelled(true);
             }
 
@@ -900,45 +826,37 @@ public class ResidenceEntityListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onHangingBreak(HangingBreakByEntityEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.destroy.isGlobalyEnabled())
-            return;
-        // disabling event on world
+
         Hanging ent = event.getEntity();
         if (ent == null)
             return;
-        if (plugin.isDisabledWorldListener(ent.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.destroy, ent)) {
+            return;
+        }
         if (!(event.getRemover() instanceof Player))
             return;
 
         Player player = (Player) event.getRemover();
-        if (ResAdmin.isResAdmin(player))
-            return;
 
         if (plugin.getResidenceManager().isOwnerOfLocation(player, ent.getLocation()))
             return;
 
-        FlagPermissions perms = FlagPermissions.getPerms(ent.getLocation(), player);
-        if (!perms.playerHas(player, Flags.destroy, perms.playerHas(player, Flags.build, true))) {
+        if (FlagPermissions.shouldDenyAndNotify(player, ent, Flags.destroy, Flags.build)) {
             event.setCancelled(true);
-            lm.Flag_Deny.sendMessage(player, Flags.destroy);
         }
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onHangingBreakEventByExplosion(HangingBreakEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.explode.isGlobalyEnabled())
-            return;
-        // disabling event on world
+
         Hanging ent = event.getEntity();
         if (ent == null)
             return;
-        if (plugin.isDisabledWorldListener(ent.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.explode, ent)) {
+            return;
+        }
         if (!event.getCause().equals(RemoveCause.EXPLOSION))
             return;
 
@@ -950,15 +868,14 @@ public class ResidenceEntityListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onHangingBreakEvent(HangingBreakEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.destroy.isGlobalyEnabled())
-            return;
-        // disabling event on world
+
         Hanging ent = event.getEntity();
         if (ent == null)
             return;
-        if (plugin.isDisabledWorldListener(ent.getWorld()))
+
+        if (FlagPermissions.shouldIgnoreCheck(Flags.destroy, ent)) {
             return;
+        }
         // ItemFrame covers item_frame/glow_item_frame
         if (!(ent instanceof ItemFrame)) {
             return;
@@ -974,16 +891,14 @@ public class ResidenceEntityListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onHangingBreakByEntity(HangingBreakByEntityEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.destroy.isGlobalyEnabled())
-            return;
-        // disabling event on world
+
         Hanging ent = event.getEntity();
         if (ent == null)
             return;
-        if (plugin.isDisabledWorldListener(ent.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.destroy, ent)) {
+            return;
+        }
         if (event.getRemover() instanceof Player)
             return;
 
@@ -999,15 +914,14 @@ public class ResidenceEntityListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onEntityCombust(EntityCombustEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.burn.isGlobalyEnabled())
-            return;
-        // disabling event on world
+
         Entity ent = event.getEntity();
         if (ent == null)
             return;
-        if (plugin.isDisabledWorldListener(ent.getWorld()))
+
+        if (FlagPermissions.shouldIgnoreCheck(Flags.burn, ent)) {
             return;
+        }
         FlagPermissions perms = FlagPermissions.getPerms(ent.getLocation());
         if (!perms.has(Flags.burn, true)) {
             event.setCancelled(true);
@@ -1391,15 +1305,12 @@ public class ResidenceEntityListener implements Listener {
     // Various zombies break the door
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onEntityBreakDoor(EntityBreakDoorEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.mobgriefing.isGlobalyEnabled())
-            return;
 
         Block block = event.getBlock();
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(block.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.mobgriefing, block)) {
+            return;
+        }
         FlagPermissions perms = FlagPermissions.getPerms(block.getLocation());
         if (perms.has(Flags.mobgriefing, perms.has(Flags.destroy, true))) {
             return;
@@ -1410,13 +1321,10 @@ public class ResidenceEntityListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onSplashPotion(PotionSplashEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.pvp.isGlobalyEnabled())
-            return;
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(event.getEntity().getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.pvp, event.getEntity())) {
+            return;
+        }
         ProjectileSource shooter = event.getPotion().getShooter();
 
         if (shooter instanceof Witch)
@@ -1482,15 +1390,11 @@ public class ResidenceEntityListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void PlayerKillingByFlame(EntityCombustByEntityEvent event) {
 
-        // Disabling listener if flag disabled globally
-        if (!Flags.pvp.isGlobalyEnabled())
-            return;
-
         Entity entity = event.getEntity();
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(entity.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.pvp, entity)) {
+            return;
+        }
         if (!(entity instanceof Player))
             return;
 
@@ -1521,13 +1425,9 @@ public class ResidenceEntityListener implements Listener {
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void OnFallDamage(EntityDamageEvent event) {
 
-        // Disabling listener if flag disabled globally
-        if (!Flags.falldamage.isGlobalyEnabled())
+        if (FlagPermissions.shouldIgnoreCheck(Flags.falldamage, event.getEntity())) {
             return;
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(event.getEntity().getWorld()))
-            return;
-
+        }
         if (event.getCause() != DamageCause.FALL)
             return;
         Entity ent = event.getEntity();
@@ -1541,15 +1441,12 @@ public class ResidenceEntityListener implements Listener {
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void OnArmorStandFlameDamage(EntityDamageEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.destroy.isGlobalyEnabled())
-            return;
 
         Entity ent = event.getEntity();
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(ent.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.destroy, ent)) {
+            return;
+        }
         if (event.getCause() != DamageCause.FIRE_TICK)
             return;
 
@@ -1564,15 +1461,12 @@ public class ResidenceEntityListener implements Listener {
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void OnArmorStandExplosion(EntityDamageEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.destroy.isGlobalyEnabled())
-            return;
 
         Entity ent = event.getEntity();
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(ent.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.destroy, ent)) {
+            return;
+        }
         if (event.getCause() != DamageCause.BLOCK_EXPLOSION && event.getCause() != DamageCause.ENTITY_EXPLOSION)
             return;
 
@@ -1587,13 +1481,10 @@ public class ResidenceEntityListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onEntityCatchingFire(EntityDamageByEntityEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.pvp.isGlobalyEnabled())
-            return;
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(event.getEntity().getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.pvp, event.getEntity())) {
+            return;
+        }
         if (!damageableProjectile(event.getDamager()))
             return;
 
@@ -1610,13 +1501,10 @@ public class ResidenceEntityListener implements Listener {
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void OnPlayerDamageByLightning(EntityDamageEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.pvp.isGlobalyEnabled())
-            return;
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(event.getEntity().getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.pvp, event.getEntity())) {
+            return;
+        }
         if (event.getCause() != DamageCause.LIGHTNING)
             return;
         Entity ent = event.getEntity();
@@ -1628,13 +1516,10 @@ public class ResidenceEntityListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onEntityDamageByFireballEvent(EntityDamageByEntityEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.fireball.isGlobalyEnabled())
-            return;
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(event.getEntity().getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.fireball, event.getEntity())) {
+            return;
+        }
         Entity dmgr = event.getDamager();
         if (dmgr.getType() != EntityType.SMALL_FIREBALL && dmgr.getType() != EntityType.FIREBALL)
             return;
@@ -1648,13 +1533,10 @@ public class ResidenceEntityListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onEntityDamageByWitherEvent(EntityDamageByEntityEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.witherdamage.isGlobalyEnabled())
-            return;
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(event.getEntity().getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.witherdamage, event.getEntity())) {
+            return;
+        }
         Entity dmgr = event.getDamager();
         if (dmgr.getType() != EntityType.WITHER && dmgr.getType() != EntityType.WITHER_SKULL)
             return;

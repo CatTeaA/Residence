@@ -50,15 +50,12 @@ public class ResidenceListener1_21 implements Listener {
     // Prevent player from taking away animals in Residence by pulling boat
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onAnimalEntersLeashedBoat(VehicleEnterEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.leash.isGlobalyEnabled())
-            return;
 
         Entity vehicle = event.getVehicle();
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(vehicle.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.leash, vehicle)) {
+            return;
+        }
         if (!(vehicle instanceof Boat))
             return;
 
@@ -116,15 +113,12 @@ public class ResidenceListener1_21 implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onAnimalEnterVehicle(VehicleEnterEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.boarding.isGlobalyEnabled())
-            return;
 
         Entity entity = event.getEntered();
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(entity.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.boarding, entity)) {
+            return;
+        }
         if (!(entity instanceof LivingEntity))
             return;
 
@@ -138,15 +132,14 @@ public class ResidenceListener1_21 implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void OnEntityDeath(EntityDeathEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.build.isGlobalyEnabled())
-            return;
-        // disabling event on world
+
         LivingEntity ent = event.getEntity();
         if (ent == null)
             return;
-        if (plugin.isDisabledWorldListener(ent.getWorld()))
+
+        if (FlagPermissions.shouldIgnoreCheck(Flags.build, ent)) {
             return;
+        }
         if (!ent.hasPotionEffect(PotionEffectType.WEAVING))
             return;
 
@@ -170,36 +163,25 @@ public class ResidenceListener1_21 implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onInteractCopperGolem(PlayerInteractEntityEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.copper.isGlobalyEnabled())
-            return;
 
         Entity entity = event.getRightClicked();
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(entity.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.copper, entity)) {
+            return;
+        }
         if (CMIEntityType.get(entity) != CMIEntityType.COPPER_GOLEM)
             return;
 
         Player player = event.getPlayer();
-        if (ResAdmin.isResAdmin(player))
-            return;
 
-        if (entity instanceof LivingEntity) {
+        EntityEquipment gloemInv = ((LivingEntity) entity).getEquipment();
+        // Right-click to remove items from holding copper_golem
+        if (gloemInv != null && (gloemInv.getItemInMainHand().getType() != Material.AIR)) {
 
-            EntityEquipment gloemInv = ((LivingEntity) entity).getEquipment();
-            // Right-click to remove items from holding copper_golem
-            if (gloemInv != null && (gloemInv.getItemInMainHand().getType() != Material.AIR ||
-                    gloemInv.getItemInOffHand().getType() != Material.AIR)) {
-
-                if (FlagPermissions.has(entity.getLocation(), player, Flags.container, true))
-                    return;
-
-                lm.Flag_Deny.sendMessage(player, Flags.container);
+            if (FlagPermissions.shouldDenyAndNotify(player, entity, Flags.container, null)) {
                 event.setCancelled(true);
-                return;
             }
+            return;
         }
         // Copper_golem has no item in hand
 
@@ -209,27 +191,21 @@ public class ResidenceListener1_21 implements Listener {
         if (held != Material.HONEYCOMB && !isItemTag(held, "axes"))
             return;
 
-        FlagPermissions perms = FlagPermissions.getPerms(entity.getLocation(), player);
-        if (perms.playerHas(player, Flags.copper, perms.playerHas(player, Flags.animalkilling, true)))
-            return;
-
-        lm.Flag_Deny.sendMessage(player, Flags.copper);
-        event.setCancelled(true);
+        if (FlagPermissions.shouldDenyAndNotify(player, entity, Flags.copper, Flags.animalkilling)) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onFishingBobberHit(ProjectileHitEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.hook.isGlobalyEnabled())
-            return;
         // anti NPE
-        Entity HitEntity = event.getHitEntity();
-        if (HitEntity == null)
-            return;
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(HitEntity.getWorld()))
+        Entity hitEntity = event.getHitEntity();
+        if (hitEntity == null)
             return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.hook, hitEntity)) {
+            return;
+        }
         Projectile hook = event.getEntity();
         // only fishing_bobber
         if (CMIEntityType.get(hook) != CMIEntityType.FISHING_BOBBER)
@@ -239,28 +215,20 @@ public class ResidenceListener1_21 implements Listener {
             return;
 
         Player player = (Player) hook.getShooter();
-        if (ResAdmin.isResAdmin(player))
-            return;
 
-        FlagPermissions perms = FlagPermissions.getPerms(HitEntity.getLocation(), player);
-        if (perms.playerHas(player, Flags.hook, true))
-            return;
-
-        lm.Flag_Deny.sendMessage(player, Flags.hook);
-        event.setCancelled(true);
+        if (FlagPermissions.shouldDenyAndNotify(player, hitEntity, Flags.hook, null)) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onAnimalFeeding(PlayerInteractEntityEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.animalfeeding.isGlobalyEnabled())
-            return;
 
         Entity entity = event.getRightClicked();
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(entity.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.animalfeeding, entity)) {
+            return;
+        }
         if (!(entity instanceof Mob))
             return;
 
@@ -270,16 +238,10 @@ public class ResidenceListener1_21 implements Listener {
             return;
 
         Player player = event.getPlayer();
-        if (ResAdmin.isResAdmin(player))
-            return;
 
-        FlagPermissions perms = FlagPermissions.getPerms(entity.getLocation(), player);
-        if (perms.playerHas(player, Flags.animalfeeding, perms.playerHas(player, Flags.animalkilling, true)))
-            return;
-
-        lm.Flag_Deny.sendMessage(player, Flags.animalfeeding);
-        event.setCancelled(true);
-
+        if (FlagPermissions.shouldDenyAndNotify(player, entity, Flags.animalfeeding, Flags.animalkilling)) {
+            event.setCancelled(true);
+        }
     }
 
     private boolean isFeedingAnimal(Mob entity, Material held) {
@@ -365,15 +327,12 @@ public class ResidenceListener1_21 implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerEquipAnimal(PlayerInteractEntityEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.container.isGlobalyEnabled())
-            return;
 
         Entity entity = event.getRightClicked();
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(entity.getWorld()))
-            return;
 
+        if (FlagPermissions.shouldIgnoreCheck(Flags.container, entity)) {
+            return;
+        }
         if (!(entity instanceof Animals))
             return;
 
@@ -385,15 +344,10 @@ public class ResidenceListener1_21 implements Listener {
             return;
 
         Player player = event.getPlayer();
-        if (ResAdmin.isResAdmin(player))
-            return;
 
-        if (FlagPermissions.has(entity.getLocation(), player, Flags.container, true))
-            return;
-
-        lm.Flag_Deny.sendMessage(player, Flags.container);
-        event.setCancelled(true);
-
+        if (FlagPermissions.shouldDenyAndNotify(player, entity, Flags.container, null)) {
+            event.setCancelled(true);
+        }
     }
 
     private boolean isEquipFitAnimal(Animals entity, CMIMaterial held) {
