@@ -19,6 +19,8 @@ import com.bekvon.bukkit.residence.containers.Flags;
 import com.bekvon.bukkit.residence.protection.FlagPermissions;
 import com.bekvon.bukkit.residence.protection.FlagPermissions.FlagCombo;
 
+import net.Zrips.CMILib.Version.Version;
+
 public class ResidenceListener1_08 implements Listener {
 
     private Residence plugin;
@@ -61,7 +63,13 @@ public class ResidenceListener1_08 implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onBlockExplodeEvent(BlockExplodeEvent event) {
-
+        // ExplosionResult.TRIGGER_BLOCK does not destroy blocks
+        // it is triggered by (Enchantment: Wind Burst)
+        if (Version.isCurrentEqualOrHigher(Version.v1_21_0)
+                && event.getExplosionResult() == org.bukkit.ExplosionResult.TRIGGER_BLOCK) {
+            ResidenceListener1_21.onWindExplode(event);
+            return;
+        }
         Block sourceBlock = event.getBlock();
         // disabling event on world
         if (plugin.isDisabledWorldListener(sourceBlock.getWorld())) {
@@ -84,8 +92,8 @@ public class ResidenceListener1_08 implements Listener {
                 preserve.add(block);
             }
         }
-        for (Block block : preserve) {
-            event.blockList().remove(block);
+        if (!preserve.isEmpty()) {
+            event.blockList().removeAll(preserve);
         }
     }
 }

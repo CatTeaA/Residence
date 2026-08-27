@@ -1,7 +1,13 @@
 package com.bekvon.bukkit.residence.listeners;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.entity.AbstractHorse;
+import org.bukkit.entity.AbstractWindCharge;
 import org.bukkit.entity.Ageable;
 import org.bukkit.entity.Animals;
 import org.bukkit.entity.Boat;
@@ -15,7 +21,9 @@ import org.bukkit.entity.Strider;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.vehicle.VehicleEnterEvent;
@@ -23,6 +31,8 @@ import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.projectiles.ProjectileSource;
+import org.jetbrains.annotations.Nullable;
 
 import com.bekvon.bukkit.residence.Residence;
 import com.bekvon.bukkit.residence.containers.Flags;
@@ -410,5 +420,122 @@ public class ResidenceListener1_21 implements Listener {
     private boolean isSlotAir(Animals entity, EquipmentSlot slot) {
         EntityEquipment equipment = entity.getEquipment();
         return equipment != null && equipment.getItem(slot).getType() == Material.AIR;
+    }
+
+    public static void onWindExplode(BlockExplodeEvent event) {
+
+        Block originBlock = event.getBlock();
+
+        if (Residence.getInstance().isDisabledWorldListener(originBlock.getWorld())) {
+            return;
+        }
+        if (Flags.windexplode.isGlobalyEnabled()) {
+            FlagPermissions originPerms = FlagPermissions.getPerms(originBlock.getLocation());
+            // Wind-Explode is prohibited at the origin location; cancel the event directly
+            if (!originPerms.has(Flags.windexplode, originPerms.has(Flags.explode, true))) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+        // Origin allows Wind-Explode, so check each affected block for interaction
+        List<Block> denyInteraction = new ArrayList<>();
+        for (Block block : event.blockList()) {
+            Flags flag = getWindExplodeInteractBlockFlag(block);
+            if (flag == null || !flag.isGlobalyEnabled()) {
+                continue;
+            }
+            FlagPermissions blockPerms = FlagPermissions.getPerms(block.getLocation());
+            if (!blockPerms.has(flag, blockPerms.has(Flags.use, true))) {
+                denyInteraction.add(block);
+            }
+        }
+        if (!denyInteraction.isEmpty()) {
+            event.blockList().removeAll(denyInteraction);
+        }
+    }
+
+    public static void onWindExplode(EntityExplodeEvent event) {
+
+        Entity originEntity = event.getEntity();
+
+        if (Residence.getInstance().isDisabledWorldListener(originEntity.getWorld())) {
+            return;
+        }
+        ProjectileSource cause;
+
+        if (originEntity instanceof AbstractWindCharge) {
+            cause = ((AbstractWindCharge) originEntity).getShooter();
+        } else {
+            // Any entity with Wind-Charged-Effect triggers a Wind-Explode on death
+            cause = ((ProjectileSource) originEntity);
+        }
+        if (Flags.windexplode.isGlobalyEnabled()) {
+            Location originLoc = event.getLocation();
+            FlagPermissions originPerms = FlagPermissions.getPerms(originLoc);
+            // Wind-Explode is prohibited at the origin location; cancel the event directly
+            if (shouldDenyWindExplode(originLoc, cause, originPerms, Flags.windexplode, Flags.explode)) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+        // Origin allows Wind-Explode, so check each affected block for interaction
+        List<Block> denyInteraction = new ArrayList<>();
+        for (Block block : event.blockList()) {
+            Flags flag = getWindExplodeInteractBlockFlag(block);
+            if (flag == null || !flag.isGlobalyEnabled()) {
+                continue;
+            }
+            FlagPermissions blockPerms = FlagPermissions.getPerms(block.getLocation());
+
+            if (shouldDenyWindExplode(block.getLocation(), cause, blockPerms, flag, Flags.use)) {
+                denyInteraction.add(block);
+            }
+        }
+        if (!denyInteraction.isEmpty()) {
+            event.blockList().removeAll(denyInteraction);
+        }
+    }
+
+    private static boolean shouldDenyWindExplode(Location triggerLoc, ProjectileSource cause, FlagPermissions perms,
+                                                 Flags mainFlag, Flags subFlag) {
+        boolean sholudDeny = false;
+        if (cause instanceof Player) {
+            Player player = (Player) cause;
+            if (player.hasMetadata("NPC") || ResAdmin.isResAdmin(player)) {
+                return false;
+            }
+            FlagPermissions playerPerms = FlagPermissions.getPerms(triggerLoc, player);
+            // Because Flags.explode is not FlagMode.Both
+            boolean result = (subFlag == Flags.explode)
+                    ? perms.has(subFlag, true)
+                    : playerPerms.playerHas(player, subFlag, true);
+            if (!playerPerms.playerHas(player, mainFlag, result)) {
+                if (DenyMessageCache.shouldSendDenyMessage(player, mainFlag)) {
+                    lm.Flag_Deny.sendMessage(player, mainFlag);
+                }
+                sholudDeny = true;
+            }
+        } else {
+            if (!perms.has(mainFlag, perms.has(subFlag, true))) {
+                sholudDeny = true;
+            }
+        }
+        return sholudDeny;
+    }
+
+    @Nullable
+    private static Flags getWindExplodeInteractBlockFlag(Block block) {
+        Flags flag = null;
+        CMIMaterial mat = CMIMaterial.get(block.getType());
+        if (mat.containsCriteria(CMIMC.BUTTON)) {
+            flag = Flags.button;
+        } else if (mat.containsCriteria(CMIMC.DOOR) || mat.containsCriteria(CMIMC.FENCEGATE) || mat.containsCriteria(CMIMC.TRAPDOOR)) {
+            flag = Flags.door;
+        } else if (mat == CMIMaterial.BELL || mat.containsCriteria(CMIMC.CANDLE) || mat.containsCriteria(CMIMC.CANDLECAKE)) {
+            flag = Flags.use;
+        } else if (mat == CMIMaterial.LEVER) {
+            flag = Flags.lever;
+        }
+        return flag;
     }
 }
