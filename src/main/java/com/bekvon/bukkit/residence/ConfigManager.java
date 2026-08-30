@@ -33,6 +33,7 @@ import com.bekvon.bukkit.residence.containers.Flags;
 import com.bekvon.bukkit.residence.containers.GenMessageType;
 import com.bekvon.bukkit.residence.containers.RandomTeleport;
 import com.bekvon.bukkit.residence.containers.lm;
+import com.bekvon.bukkit.residence.listenersCache.DenyMessageCache;
 import com.bekvon.bukkit.residence.protection.FlagPermissions;
 import com.bekvon.bukkit.residence.protection.FlagPermissions.FlagState;
 import com.bekvon.bukkit.residence.selection.VisualizerConfig;
@@ -151,6 +152,7 @@ public class ConfigManager {
     private boolean chatListening;
     private GenMessageType GeneralMessageType;
     protected List<String> MessageType;
+    protected int FlagDenyMessageCooldown;
 
     protected boolean ActionBarOnSelection;
     protected boolean visualizer;
@@ -1181,6 +1183,14 @@ public class ConfigManager {
         c.addComment("Global.Messages.MessageType", "Classified under Language MessageType of GeneralMessages");
         MessageType = new ArrayList<>(c.get("Global.Messages.MessageType", Arrays.asList("Flag_Deny", "Residence_FlagDeny", "General_NoPVPZone")));
 
+        c.addComment("Global.Messages.FlagDenyMessageCooldown", "Cooldown for sending duplicate Flag deny messages, in seconds(default: 1)",
+                "Only effective for 1.16+ versions; suppresses spam from repeated Flag deny messages");
+        FlagDenyMessageCooldown = (c.get("Global.Messages.FlagDenyMessageCooldown", 1));
+
+        if (Version.isCurrentEqualOrHigher(Version.v1_16_0) && FlagDenyMessageCooldown > 0) {
+            DenyMessageCache.reloadDenyMessageCache(FlagDenyMessageCooldown);
+        }
+
         ActionBarOnSelection = c.get("Global.ActionBar.ShowOnSelection", true);
 
         c.addComment("Global.ResidenceChatEnable", "Enable or disable residence chat channels.");
@@ -2073,6 +2083,10 @@ public class ConfigManager {
 
     public List<String> getMessageType() {
         return MessageType;
+    }
+
+    public int getFlagDenyMessageCooldown() {
+        return FlagDenyMessageCooldown;
     }
 
     @Deprecated

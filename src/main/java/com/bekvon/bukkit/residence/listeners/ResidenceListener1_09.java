@@ -9,13 +9,11 @@ import org.bukkit.Material;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Snowman;
 import org.bukkit.entity.ThrownPotion;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.CauldronLevelChangeEvent;
-import org.bukkit.event.block.EntityBlockFormEvent;
 import org.bukkit.event.entity.AreaEffectCloudApplyEvent;
 import org.bukkit.event.entity.EntityToggleGlideEvent;
 import org.bukkit.event.entity.LingeringPotionSplashEvent;
@@ -26,7 +24,6 @@ import org.bukkit.potion.PotionEffect;
 
 import com.bekvon.bukkit.residence.Residence;
 import com.bekvon.bukkit.residence.containers.Flags;
-import com.bekvon.bukkit.residence.containers.ResAdmin;
 import com.bekvon.bukkit.residence.containers.lm;
 import com.bekvon.bukkit.residence.event.ResidenceChangedEvent;
 import com.bekvon.bukkit.residence.protection.ClaimedResidence;
@@ -198,46 +195,6 @@ public class ResidenceListener1_09 implements Listener {
                 event.getEntity().remove();
                 break;
             }
-        }
-    }
-
-    // FrostWalker form frosted_ice, Wither form wither_rose
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onEntityBlockFormEvent(EntityBlockFormEvent event) {
-
-        Entity entity = event.getEntity();
-        if (entity == null)
-            return;
-
-        if (FlagPermissions.shouldIgnoreCheck(Flags.build, entity)) {
-            return;
-        }
-        if (entity instanceof Player) {
-            Player player = (Player) entity;
-
-            if (player.hasMetadata("NPC"))
-                return;
-
-            if (ResAdmin.isResAdmin(player))
-                return;
-
-            FlagPermissions perms = FlagPermissions.getPerms(event.getBlock().getLocation(), player);
-            if (perms.playerHas(player, Flags.build, true))
-                return;
-
-            event.setCancelled(true);
-
-            // SnowGolem already has SnowTrail Flag
-            // Check all entity trigger FrostWalker
-            // ArmorStand Skeleton Zombies ...
-        } else if (!(entity instanceof Snowman)) {
-
-            FlagPermissions perms = FlagPermissions.getPerms(event.getBlock().getLocation());
-            if (perms.has(Flags.build, true))
-                return;
-
-            event.setCancelled(true);
-
         }
     }
 
