@@ -664,9 +664,6 @@ public enum lm {
                     }
 
                     Player player = (Player) sender;
-                    if (player.hasMetadata("NPC")) {
-                        return;
-                    }
 
                     switch (Residence.getInstance().getConfigManager().getGeneralMessageType()) {
                     case ActionBar:
