@@ -1284,81 +1284,19 @@ public class ResidencePlayerListener implements Listener {
     }
 
     private boolean isContainer(Material mat) {
-        return FlagPermissions.getMaterialUseFlagList().containsKey(mat) && FlagPermissions.getMaterialUseFlagList().get(mat).equals(Flags.container)
+        return FlagPermissions.getMaterialUseFlagList().get(mat) == Flags.container
                 || plugin.getConfigManager().getCustomContainers().contains(mat);
     }
 
-    public static boolean isCanUseEntity_BothClick(Material mat) {
-        CMIMaterial cmat = CMIMaterial.get(mat);
-
-        switch (cmat) {
+    private boolean canBothClickBlock(Material mat) {
+        switch (CMIMaterial.get(mat)) {
         case NOTE_BLOCK:
         case DRAGON_EGG:
             return true;
         default:
-            return Residence.getInstance().getConfigManager().getCustomBothClick().contains(mat);
+            return plugin.getConfigManager().getCustomBothClick().contains(mat)
+                    || plugin.getConfigManager().getCustomContainers().contains(mat);
         }
-    }
-
-    private boolean isCanUseEntity_RClickOnly(Material mat) {
-        CMIMaterial cmat = CMIMaterial.get(mat);
-
-        switch (cmat) {
-        case ANVIL:
-        case BEACON:
-        case BELL:
-        case BREWING_STAND:
-        case CAMPFIRE:
-        case CARTOGRAPHY_TABLE:
-        case CHAIN_COMMAND_BLOCK:
-        case CHIPPED_ANVIL:
-        case COMMAND_BLOCK:
-        case COMPARATOR:
-        case CRAFTER:
-        case CRAFTING_TABLE:
-        case DAMAGED_ANVIL:
-        case DAYLIGHT_DETECTOR:
-        case ENCHANTING_TABLE:
-        case FLETCHING_TABLE:
-        case FLOWER_POT:
-        case GRINDSTONE:
-        case LECTERN:
-        case LEGACY_DIODE_BLOCK_OFF:
-        case LEGACY_DIODE_BLOCK_ON:
-        case LEGACY_REDSTONE_COMPARATOR_OFF:
-        case LEGACY_REDSTONE_COMPARATOR_ON:
-        case LEVER:
-        case LOOM:
-        case REPEATER:
-        case REPEATING_COMMAND_BLOCK:
-        case RESPAWN_ANCHOR:
-        case SMITHING_TABLE:
-        case SOUL_CAMPFIRE:
-        case STONECUTTER:
-            return true;
-        default:
-            break;
-        }
-
-        if (cmat.containsCriteria(CMIMC.BED)
-                || cmat.containsCriteria(CMIMC.BUTTON)
-                || cmat.containsCriteria(CMIMC.CAKE)
-                || cmat.containsCriteria(CMIMC.CANDLE)
-                || cmat.containsCriteria(CMIMC.CANDLECAKE)
-                || cmat.containsCriteria(CMIMC.DOOR)
-                || cmat.containsCriteria(CMIMC.FENCEGATE)
-                || cmat.containsCriteria(CMIMC.TRAPDOOR)
-                || cmat.containsCriteria(CMIMC.POTTED))
-            return true;
-
-        if (mat.name().equals("DAYLIGHT_DETECTOR_INVERTED"))
-            return true;
-
-        return plugin.getConfigManager().getCustomRightClick().contains(mat);
-    }
-
-    private boolean isCanUseEntity(Material mat) {
-        return isCanUseEntity_BothClick(mat) || isCanUseEntity_RClickOnly(mat);
     }
 
     @EventHandler(priority = EventPriority.LOWEST) // Do not use (ignoreCancelled = true)
@@ -1393,93 +1331,74 @@ public class ResidencePlayerListener implements Listener {
         if (event.useInteractedBlock() == Result.DENY) {
             return;
         }
-        Material mat = block.getType();
+        Material blockType = block.getType();
+        // Residence assigns Flags internally for Material
+        Flags flag = FlagPermissions.getMaterialUseFlagList().get(blockType);
 
-        if (!isContainer(mat) && !isCanUseEntity(mat))
-            return;
-
-        FlagPermissions perms = FlagPermissions.getPerms(block.getLocation(), player);
-        boolean hasUse = perms.playerHas(player, Flags.use, true);
-
-        ClaimedResidence res = plugin.getResidenceManager().getByLoc(block.getLocation());
-        // Restrict defender container use in raid
-        if (res != null && res.getRaid().isUnderRaid() && res.getRaid().isDefender(player) && !ConfigManager.RaidDefenderContainerUsage) {
-            Flags result = FlagPermissions.getMaterialUseFlagList().get(mat);
-            if (result != null && result.equals(Flags.container)) {
-                event.setCancelled(true);
-                lm.Raid_cantDo.sendMessage(player);
-                return;
+        if (flag == null) {
+            // Custom right-click block check; Flags.use
+            if ((event.getAction() == Action.RIGHT_CLICK_BLOCK && plugin.getConfigManager().getCustomRightClick().contains(blockType))
+                    // Custom both-click block check; Flags.use
+                    || plugin.getConfigManager().getCustomBothClick().contains(blockType)) {
+                flag = Flags.use;
+                // Custom both-click container check; Flags.container
+            } else if (plugin.getConfigManager().getCustomContainers().contains(blockType)) {
+                flag = Flags.container;
             }
         }
-
-        if (res == null || !res.isOwner(player)) {
-
-            Flags result = FlagPermissions.getMaterialUseFlagList().get(mat);
-            // Residence assigns Flags internally for Material
-            if (result != null) {
-                // Start AbstractBlockClickFlag Check
-                main: if (!perms.playerHas(player, result, hasUse)) {
-
-                    if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-
-                        if (res != null && res.getRaid().isUnderRaid() && res.getRaid().isAttacker(player)) {
-                            break main;
-                        }
-
-                        switch (result) {
-                        case button:
-                            if (ResPerm.bypass_button.hasPermission(player, 10000L))
-                                break main;
-                            break;
-                        case container:
-                            if (ResPerm.bypass_container.hasPermission(player, 10000L))
-                                break main;
-                            break;
-                        case door:
-                            if (ResPerm.bypass_door.hasPermission(player, 10000L))
-                                break main;
-                            break;
-                        }
-                        event.setCancelled(true);
-                        lm.Flag_Deny.sendMessage(player, result);
-                        return;
-                    }
-
-                    if (isCanUseEntity_BothClick(mat)) {
-
-                        if (res != null && res.getRaid().isUnderRaid() && res.getRaid().isAttacker(player)) {
-                            break main;
-                        }
-                        event.setCancelled(true);
-                        lm.Flag_Deny.sendMessage(player, result);
-                    }
+        // Not Vanilla Raid
+        if (ConfigManager.RaidEnabled && flag != null) {
+            ClaimedResidence res = ClaimedResidence.getByLoc(block.getLocation());
+            if (res != null && res.getRaid().isUnderRaid()) {
+                // Exempt interaction check for Raid attacker
+                if (res.getRaid().isAttacker(player)) {
                     return;
                 }
-                // End AbstractBlockClickFlag Check
+                // Restrict defender container use in raid
+                if (!ConfigManager.RaidDefenderContainerUsage && flag == Flags.container && res.getRaid().isDefender(player)) {
+                    lm.Raid_cantDo.sendMessage(player);
+                    event.setCancelled(true);
+                    return;
+                }
             }
         }
-        // Restrict custom both-click container use
-        if (plugin.getConfigManager().getCustomContainers().contains(mat)) {
-            if (!perms.playerHas(player, Flags.container, hasUse)
-                    || !ResPerm.bypass_container.hasPermission(player, 10000L)) {
-                event.setCancelled(true);
-                lm.Flag_Deny.sendMessage(player, Flags.container);
-                return;
-            }
-        }
-        // Restrict custom both-click block
-        if (!hasUse && plugin.getConfigManager().getCustomBothClick().contains(mat)) {
-            event.setCancelled(true);
-            lm.Flag_Deny.sendMessage(player, Flags.use);
+        if (flag == null) {
             return;
         }
-        // Restrict custom right-click block
-        if (!hasUse && event.getAction() == Action.RIGHT_CLICK_BLOCK
-                && plugin.getConfigManager().getCustomRightClick().contains(mat)) {
-            event.setCancelled(true);
-            lm.Flag_Deny.sendMessage(player, Flags.use);
-        }
+        // Start AbstractBlockClickFlag Check
+        FlagPermissions perms = FlagPermissions.getPerms(block.getLocation(), player);
+        boolean hasUse = (flag == Flags.use) || perms.playerHas(player, Flags.use, true);
 
+        if (perms.playerHas(player, flag, hasUse)) {
+            return;
+        }
+        switch (flag) {
+        case button:
+            if (ResPerm.bypass_button.hasPermission(player, 10000L)) {
+                return;
+            }
+            break;
+        case container:
+            if (ResPerm.bypass_container.hasPermission(player, 10000L)) {
+                return;
+            }
+            break;
+        case door:
+            if (ResPerm.bypass_door.hasPermission(player, 10000L)) {
+                return;
+            }
+            break;
+        }
+        if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+            lm.Flag_Deny.sendMessage(player, flag);
+            event.setCancelled(true);
+            return;
+        }
+        if (canBothClickBlock(blockType)) {
+            lm.Flag_Deny.sendMessage(player, flag);
+            event.setCancelled(true);
+        }
+        // End AbstractBlockClickFlag Check
     }
 
     private boolean canHaveContainer(Entity entity, Player player) {
@@ -1512,13 +1431,13 @@ public class ResidencePlayerListener implements Listener {
         if (player.isSneaking()) {
             return false;
         }
-        if (!(entity instanceof Vehicle)) {
-            return false;
-        }
-        CMIEntityType type = CMIEntityType.get(entity);
-        if (type != null) {
-            // Non-rideable Vehicles
+        if (entity instanceof Vehicle) {
+            CMIEntityType type = CMIEntityType.get(entity);
+            if (type == null) {
+                return true;
+            }
             switch (type) {
+            // Non-rideable Vehicles
             case CHEST_MINECART:
             case COMMAND_BLOCK_MINECART:
             case FURNACE_MINECART:

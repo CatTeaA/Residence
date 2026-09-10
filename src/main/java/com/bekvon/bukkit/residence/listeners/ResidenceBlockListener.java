@@ -16,6 +16,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Snowman;
+import org.bukkit.entity.minecart.HopperMinecart;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -38,11 +39,13 @@ import org.bukkit.event.block.EntityBlockFormEvent;
 import org.bukkit.event.block.LeavesDecayEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.world.PortalCreateEvent;
 import org.bukkit.event.world.StructureGrowEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
 import org.bukkit.util.Vector;
@@ -1079,5 +1082,77 @@ public class ResidenceBlockListener implements Listener {
         if (FlagPermissions.shouldDenyAndNotify(player, block, Flags.ignite, null)) {
             event.setCancelled(true);
         }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onHopperMoveItem(InventoryMoveItemEvent event) {
+        // Prevent trolls from pushing derailed hopper minecarts into the Residence to steal items from containers
+        if (Flags.minecartsuction.isGlobalyEnabled()) {
+            InventoryHolder holder = event.getInitiator().getHolder();
+            if (holder instanceof HopperMinecart) {
+                Location loc = ((HopperMinecart) holder).getLocation();
+                if (!CMIMaterial.get(loc.getBlock().getType()).containsCriteria(CMIMC.RAIL)
+                        && FlagPermissions.has(loc, Flags.minecartsuction, FlagCombo.OnlyFalse)) {
+                    event.setCancelled(true);
+                    return;
+                }
+            }
+        }
+        // Protect containers at the edge of the Residence area from theft
+        if (!Flags.container.isGlobalyEnabled() || !plugin.getConfigManager().getHopperCrossResidenceCheck()) {
+            return;
+        }
+        Location sourceLoc = null;
+        Location destLoc = null;
+
+        if (Version.isCurrentEqualOrHigher(Version.v1_9_0)) {
+            sourceLoc= event.getSource().getLocation();
+            destLoc = event.getDestination().getLocation();
+
+            // Legacy versions do not support Inventory.getLocation() directly
+        } else {
+            InventoryHolder sourceHolder = event.getSource().getHolder();
+            if (sourceHolder instanceof BlockState) {
+                sourceLoc = ((BlockState) sourceHolder).getLocation();
+            } else if (sourceHolder instanceof Entity) {
+                sourceLoc = ((Entity) sourceHolder).getLocation();
+            }
+
+            InventoryHolder destHolder = event.getDestination().getHolder();
+            if (destHolder instanceof BlockState) {
+                destLoc = ((BlockState) destHolder).getLocation();
+            } else if (destHolder instanceof Entity) {
+                destLoc = ((Entity) destHolder).getLocation();
+            }
+        }
+        ClaimedResidence sourceRes = ClaimedResidence.getByLoc(sourceLoc);
+        ClaimedResidence destRes = ClaimedResidence.getByLoc(destLoc);
+        // Source and Dest not in Res
+        if (sourceRes == null && destRes == null) {
+            return;
+        }
+        // Source and Dest in Res
+        if (sourceRes != null && destRes != null) {
+            // in Same Res, or have Same Res owner
+            if (sourceRes == destRes || sourceRes.isOwner(destRes.getOwner())) {
+                return;
+            }
+            // Not in Same Res and not Same Res owner; hopper can be Source or Dest
+            if (sourceRes.getPermissions().has(Flags.container, true)
+                    && destRes.getPermissions().has(Flags.container, true)) {
+                return;
+            }
+            // Source in Res, Dest definitely not in Res
+        } else if (sourceRes != null) {
+            if (sourceRes.getPermissions().has(Flags.container, true)) {
+                return;
+            }
+            // Dest definitely in Res, Source definitely not in Res
+        } else {
+            if (destRes.getPermissions().has(Flags.container, true)) {
+                return;
+            }
+        }
+        event.setCancelled(true);
     }
 }

@@ -201,6 +201,7 @@ public class ConfigManager {
     protected boolean DisableListeners;
     protected boolean DisableCommands;
     private boolean DisableResidenceCreation;
+    private boolean HopperCrossResidenceCheck;
 
     // Town
 //    private boolean TownEnabled = false;
@@ -822,6 +823,11 @@ public class ConfigManager {
         WalkSpeed2 = WalkSpeed2 > 5 ? 5 : WalkSpeed2;
         WalkSpeed2 = WalkSpeed2 / 5.0;
 
+        c.addComment("Global.Optimizations.ExtraProtection.HopperCrossResidenceCheck",
+                "Whether to check hoppers crossing Residence borders to prevent edge container theft (default: true)",
+                "If Flags.container is globally disabled, this option has no effect");
+        HopperCrossResidenceCheck = c.get("Global.Optimizations.ExtraProtection.HopperCrossResidenceCheck", true);
+
         SignsMaxPerResidence = c.get("Global.Signs.MaxPerResidence", 5);
         SignsMaxPerResidence = SignsMaxPerResidence < 0 ? 0 : SignsMaxPerResidence;
 
@@ -1275,6 +1281,7 @@ public class ConfigManager {
         NewPlayerRangeY = c.get("Global.NewPlayer.Range.Y", 5);
         NewPlayerRangeZ = c.get("Global.NewPlayer.Range.Z", 5);
 
+        customContainers.clear();
         c.addComment("Global.CustomContainers", "Experimental - The following settings are lists of block IDs to be used as part of the checks for the 'container' and 'use' flags when using mods.");
         List<String> pls = c.get("Global.CustomContainers", new ArrayList<String>());
         for (String one : pls) {
@@ -1283,6 +1290,7 @@ public class ConfigManager {
                 customContainers.add(mat);
         }
 
+        customBothClick.clear();
         pls = c.get("Global.CustomBothClick", new ArrayList<String>());
         for (String one : pls) {
             Material mat = CMILib.getInstance().getItemManager().getMaterial(one);
@@ -1290,6 +1298,7 @@ public class ConfigManager {
                 customBothClick.add(mat);
         }
 
+        customRightClick.clear();
         pls = c.get("Global.CustomRightClick", new ArrayList<String>());
         for (String one : pls) {
             Material mat = CMILib.getInstance().getItemManager().getMaterial(one);
@@ -2222,6 +2231,10 @@ public class ConfigManager {
 
     public List<String> getTeleportBlockedWorlds() {
         return TeleportBlockedWorlds;
+    }
+
+    public boolean getHopperCrossResidenceCheck() {
+        return HopperCrossResidenceCheck;
     }
 
 //    public int getTownMinRange() {
