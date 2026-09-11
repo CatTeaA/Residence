@@ -1005,7 +1005,7 @@ public class Residence extends JavaPlugin {
         if (ymlSaveLoc.isFile()) {
             File backupFolder = new File(worldFolder, "Backup");
             backupFolder.mkdirs();
-            File backupFile = new File(backupFolder, "res_" + worldName + ".yml");
+            File backupFile = new File(backupFolder, "res_" + getSaveWorldName(worldName) + ".yml");
             if (backupFile.isFile()) {
                 backupFile.delete();
             }
@@ -1030,14 +1030,14 @@ public class Residence extends JavaPlugin {
             } catch (Throwable e) {
             }
 
-            File ymlSaveLoc = new File(worldFolder, "res_" + entry.getKey() + ".yml");
+            File ymlSaveLoc = new File(worldFolder, "res_" + getSaveWorldName(entry.getKey()) + ".yml");
 
             if (emptyRecord) {
                 saveBackup(ymlSaveLoc, entry.getKey(), worldFolder);
                 continue;
             }
 
-            File tmpFile = new File(worldFolder, "tmp_res_" + entry.getKey() + ".yml");
+            File tmpFile = new File(worldFolder, "tmp_res_" + getSaveWorldName(entry.getKey()) + ".yml");
 
             syml = new YMLSaveHelper(tmpFile);
             if (this.getResidenceManager().getMessageCatch(entry.getKey()) != null)
@@ -1130,6 +1130,16 @@ public class Residence extends JavaPlugin {
 
     public final static String saveFilePrefix = "res_";
 
+    /**
+     * Replaces path separators in a world name for use in save file names.
+     *
+     * @param worldName world name
+     * @return file-safe world name
+     */
+    public static String getSaveWorldName(String worldName) {
+        return worldName.replace('/', '_');
+    }
+
     private void loadFlags(String worldName, YMLSaveHelper yml) {
         if (!yml.getRoot().containsKey("Flags"))
             return;
@@ -1198,7 +1208,7 @@ public class Residence extends JavaPlugin {
             HashMap<String, Object> worlds = new HashMap<>();
 
             for (String worldName : this.getResidenceManager().getWorldNames()) {
-                loadFile = new File(worldFolder, saveFilePrefix + worldName + ".yml");
+                loadFile = new File(worldFolder, saveFilePrefix + getSaveWorldName(worldName) + ".yml");
                 if (!loadFile.isFile())
                     continue;
 
