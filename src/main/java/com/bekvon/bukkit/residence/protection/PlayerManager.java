@@ -170,8 +170,8 @@ public class PlayerManager implements ResidencePlayerInterface {
             ResidencePlayer byName = playersByName.get(name.toLowerCase());
             if (byName != null && byName.getData().getLastSeen() < resPlayer.getData().getLastSeen()) {
                 playersByName.remove(byName.getName().toLowerCase());
-            } else
-                playersByName.put(name.toLowerCase(), resPlayer);
+            }
+            playersByName.put(name.toLowerCase(), resPlayer);
         }
 
         if (uuid != null) {
