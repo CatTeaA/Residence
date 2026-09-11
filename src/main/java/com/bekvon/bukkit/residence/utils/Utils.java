@@ -17,6 +17,7 @@ import org.bukkit.entity.Animals;
 import org.bukkit.entity.Bat;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.IronGolem;
+import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.NPC;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -25,6 +26,7 @@ import org.bukkit.entity.Tameable;
 import org.bukkit.entity.Vehicle;
 import org.bukkit.entity.Villager;
 import org.bukkit.entity.WaterMob;
+import org.bukkit.entity.minecart.PoweredMinecart;
 import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
@@ -327,6 +329,12 @@ public class Utils {
             return event.getHand() == EquipmentSlot.HAND;
         }
         return true;
+    }
+
+    public static boolean isContainerEntityWithoutGui(Entity entity) {
+        return  entity instanceof ItemFrame
+                || entity instanceof PoweredMinecart
+                || (Version.isCurrentEqualOrHigher(Version.v1_19_0) && entity instanceof org.bukkit.entity.Allay);
     }
 
     public static boolean isChorusTeleport(TeleportCause tpcause) {

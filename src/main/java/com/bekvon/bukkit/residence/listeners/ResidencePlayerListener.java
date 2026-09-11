@@ -17,11 +17,9 @@ import org.bukkit.World;
 import org.bukkit.World.Environment;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
-import org.bukkit.entity.AbstractHorse;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Damageable;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.LeashHitch;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -37,6 +35,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
@@ -57,8 +56,10 @@ import org.bukkit.event.player.PlayerShearEntityEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.bukkit.event.player.PlayerToggleFlightEvent;
+import org.bukkit.event.vehicle.VehicleEnterEvent;
 import org.bukkit.event.vehicle.VehicleMoveEvent;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
@@ -1300,35 +1301,33 @@ public class ResidencePlayerListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.LOWEST) // Do not use (ignoreCancelled = true)
-    public void onPlayerInteract(PlayerInteractEvent event) {
-
-        Block block = event.getClickedBlock();
-        if (block == null)
+    public void onPlayerClickInteract(PlayerInteractEvent event) {
+        if (event.getAction() == Action.PHYSICAL) {
             return;
-        // disabling event on world
-        if (plugin.isDisabledWorldListener(block))
-            return;
-
-        if (event.getAction() != Action.LEFT_CLICK_BLOCK && event.getAction() != Action.RIGHT_CLICK_BLOCK)
-            return;
-
+        }
         Player player = event.getPlayer();
-        if (ResAdmin.isResAdmin(player))
+        // disabling event on world
+        if (plugin.isDisabledWorldListener(player)) {
             return;
-
-        if (event.useItemInHand() != Result.DENY) {
-            CMIMaterial heldItem = CMIMaterial.get(event.getItem());
-            // Check held Material Blacklist
-            if (!heldItem.isNone() && heldItem.isValidItem() && !plugin.getItemManager().isAllowed(
-                    heldItem.getMaterial(),
-                    plugin.getPlayerManager().getResidencePlayer(player).getGroup(),
-                    player.getWorld().getName())) {
-                lm.General_ItemBlacklisted.sendMessage(player);
-                event.setCancelled(true);
-                return;
-            }
+        }
+        if (ResAdmin.isResAdmin(player)) {
+            return;
+        }
+        // Check held Material Blacklist
+        if (event.useItemInHand() != Result.DENY && event.getItem() != null
+                && !plugin.getItemManager().isAllowed(event.getItem().getType(), player)) {
+            lm.General_ItemBlacklisted.sendMessage(player);
+            event.setCancelled(true);
+            return;
+        }
+        if (event.getAction() != Action.LEFT_CLICK_BLOCK && event.getAction() != Action.RIGHT_CLICK_BLOCK) {
+            return;
         }
         if (event.useInteractedBlock() == Result.DENY) {
+            return;
+        }
+        Block block = event.getClickedBlock();
+        if (block == null) {
             return;
         }
         Material blockType = block.getType();
@@ -1401,57 +1400,6 @@ public class ResidencePlayerListener implements Listener {
         // End AbstractBlockClickFlag Check
     }
 
-    private boolean canHaveContainer(Entity entity, Player player) {
-        CMIEntityType type = CMIEntityType.get(entity);
-        if (type != null) {
-            // Click to open container entities
-            switch (type) {
-            case ALLAY:
-            case CHEST_MINECART:
-            case FURNACE_MINECART:
-            case HOPPER_MINECART:
-                return true;
-            default:
-                break;
-            }
-        }
-        // Click requires sneaking to open these entity containers
-        // Avoid overriding Flags.riding
-        if (player.isSneaking()) {
-            if (Version.isCurrentEqualOrHigher(Version.v1_19_0)) {
-                return ResidenceListener1_19.canHaveContainer1_19(entity);
-            }
-            return entity instanceof AbstractHorse;
-        }
-        return false;
-    }
-
-    private boolean canRide(Entity entity, Player player) {
-        // Cannot ride while sneaking
-        if (player.isSneaking()) {
-            return false;
-        }
-        if (entity instanceof Vehicle) {
-            CMIEntityType type = CMIEntityType.get(entity);
-            if (type == null) {
-                return true;
-            }
-            switch (type) {
-            // Non-rideable Vehicles
-            case CHEST_MINECART:
-            case COMMAND_BLOCK_MINECART:
-            case FURNACE_MINECART:
-            case HOPPER_MINECART:
-            case SPAWNER_MINECART:
-            case TNT_MINECART:
-                return false;
-            default:
-                return true;
-            }
-        }
-        return false;
-    }
-
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
         Entity entity = event.getRightClicked();
@@ -1465,19 +1413,13 @@ public class ResidencePlayerListener implements Listener {
 
         if (Flags.commandblock.isGlobalyEnabled() && entity instanceof CommandMinecart) {
             mainFlag = Flags.commandblock;
-            // ItemFrame covers item_frame/glow_item_frame
-        } else if (Flags.container.isGlobalyEnabled() && entity instanceof ItemFrame) {
+
+        } else if (Flags.container.isGlobalyEnabled() && Utils.isContainerEntityWithoutGui(entity)) {
             mainFlag = Flags.container;
             subFlag = Flags.use;
 
         } else if (Flags.leash.isGlobalyEnabled() && entity instanceof LeashHitch) {
             mainFlag = Flags.leash;
-
-        } else if (Flags.container.isGlobalyEnabled() && canHaveContainer(entity, player)) {
-            mainFlag = Flags.container;
-
-        } else if (Flags.riding.isGlobalyEnabled() && canRide(entity, player)) {
-            mainFlag = Flags.riding;
 
         } else if (Flags.trade.isGlobalyEnabled() && Utils.isVillagerOrTrader(entity)) {
             mainFlag = Flags.trade;
@@ -1508,20 +1450,17 @@ public class ResidencePlayerListener implements Listener {
         if (item == null) {
             return;
         }
+        // Check held Material Blacklist
+        if (!plugin.getItemManager().isAllowed(item.getType(), player) && !ResAdmin.isResAdmin(player)) {
+            lm.General_ItemBlacklisted.sendMessage(player);
+            event.setCancelled(true);
+            return;
+        }
         CMIMaterial held = CMIMaterial.get(item);
         Flags mainFlag;
         Flags subFlag = null;
 
-        if (entity instanceof ItemFrame) {
-            // Check held Material Blacklist
-            PermissionGroup group = plugin.getPlayerManager().getResidencePlayer(player).getGroup();
-            if (!plugin.getItemManager().isAllowed(item.getType(), group, entity.getWorld().getName()) && !ResAdmin.isResAdmin(player)) {
-                lm.General_ItemBlacklisted.sendMessage(player);
-                event.setCancelled(true);
-            }
-            return;
-
-        } else if (Flags.dye.isGlobalyEnabled() && entity instanceof Sheep && held.containsCriteria(CMIMC.DYE)) {
+        if (Flags.dye.isGlobalyEnabled() && entity instanceof Sheep && held.containsCriteria(CMIMC.DYE)) {
             mainFlag = Flags.dye;
             subFlag = Flags.animalkilling;
 
@@ -1581,6 +1520,46 @@ public class ResidencePlayerListener implements Listener {
             return;
         }
         if (FlagPermissions.shouldDenyAndNotify(player, event.getEntity(), Flags.shear, null)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onEntityTryRideVehicle(VehicleEnterEvent event) {
+
+        Entity entity = event.getEntered();
+
+        if (entity instanceof Player) {
+            if (FlagPermissions.shouldIgnoreCheck(Flags.riding, entity)) {
+                return;
+            }
+            if (FlagPermissions.shouldDenyAndNotify((Player) entity, event.getVehicle(), Flags.riding, null)) {
+                event.setCancelled(true);
+            }
+        } else {
+            if (FlagPermissions.shouldIgnoreCheck(Flags.boarding, entity)) {
+                return;
+            }
+            if (FlagPermissions.has(entity.getLocation(), Flags.boarding, FlagCombo.OnlyFalse)) {
+                event.setCancelled(true);
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onPlayerOpenVehicleInventory(InventoryOpenEvent event) {
+
+        Player player = (Player) event.getPlayer();
+
+        if (FlagPermissions.shouldIgnoreCheck(Flags.container, player)) {
+            return;
+        }
+        InventoryHolder holder = event.getInventory().getHolder();
+
+        if (!(holder instanceof Vehicle)) {
+            return;
+        }
+        if (FlagPermissions.shouldDenyAndNotify(player, (Vehicle) holder, Flags.container, null)) {
             event.setCancelled(true);
         }
     }
