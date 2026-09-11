@@ -190,7 +190,8 @@ public class ResidencePlayerListener implements Listener {
 
         Player player = event.getPlayer();
 
-        ClaimedResidence res = plugin.getResidenceManager().getByLoc(player.getLocation());
+        ClaimedResidence res = ClaimedResidence.getByLoc(player.getLocation());
+        
         if (res == null)
             return;
 
