@@ -1023,9 +1023,7 @@ public class ResidencePlayerListener implements Listener {
             return false;
         }
         switch (held) {
-        case BUCKET:
         case GLASS_BOTTLE:
-        case POTION:
         case WATER_BUCKET:
             return true;
         default:
@@ -1033,7 +1031,7 @@ public class ResidencePlayerListener implements Listener {
         }
     }
 
-    private boolean isBuildClickBlock(CMIMaterial block, CMIMaterial held) {
+    private boolean isBuildClickBlock(CMIMaterial block, CMIMaterial held, Player player) {
         if (held == CMIMaterial.BONE_MEAL) {
             return isBlockFertilizable(block);
         }
@@ -1042,7 +1040,7 @@ public class ResidencePlayerListener implements Listener {
         }
         switch (block) {
         case CAULDRON:
-            return isLegacyCauldronInteraction(held);
+            return !player.isSneaking() && isLegacyCauldronInteraction(held);
         case PUMPKIN:
             return held == CMIMaterial.SHEARS;
         case REDSTONE_WIRE:
@@ -1079,9 +1077,14 @@ public class ResidencePlayerListener implements Listener {
         return false;
     }
 
+    // Handle player placement or block modification when no specific event is available
+    // Even if dedicated events are added in the future, legacy version servers still exist
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onPlayerBuildWithSpecificItems(PlayerInteractEvent event) {
-
+    public void onPlayerBuildViaInteract(PlayerInteractEvent event) {
+        Action action = event.getAction();
+        if (action != Action.RIGHT_CLICK_BLOCK && action != Action.LEFT_CLICK_BLOCK) {
+            return;
+        }
         Block block = event.getClickedBlock();
         if (block == null)
             return;
@@ -1089,13 +1092,13 @@ public class ResidencePlayerListener implements Listener {
         if (FlagPermissions.shouldIgnoreCheck(Flags.build, block)) {
             return;
         }
+        Player player = event.getPlayer();
         Location loc = null;
 
-        switch (event.getAction()) {
-        case RIGHT_CLICK_BLOCK:
+        if (action == Action.RIGHT_CLICK_BLOCK) {
             CMIMaterial blockType = CMIMaterial.get(block.getType());
             CMIMaterial heldItem = CMIMaterial.get(event.getItem());
-            if (isBuildClickBlock(blockType, heldItem)) {
+            if (isBuildClickBlock(blockType, heldItem, player)) {
                 loc = block.getLocation();
 
             } else if (isBuildClickBlockFace(blockType, heldItem)) {
@@ -1105,20 +1108,13 @@ public class ResidencePlayerListener implements Listener {
                 loc = block.getLocation().clone().add(0, 1, 0);
 
             }
-            break;
-        case LEFT_CLICK_BLOCK:
+        } else {
             if (block.getRelative(event.getBlockFace()).getType() == Material.FIRE) {
                 loc = block.getLocation();
             }
-            break;
-        default:
-            return;
         }
-
         if (loc == null)
             return;
-
-        Player player = event.getPlayer();
 
         if (FlagPermissions.shouldDenyAndNotify(player, loc, Flags.place, Flags.build)) {
             event.setCancelled(true);
@@ -1593,15 +1589,23 @@ public class ResidencePlayerListener implements Listener {
     }
 
     private boolean isCauldron(Block block) {
-        if (block == null) {
-            return false;
-        }
-        CMIMaterial mat = CMIMaterial.get(block.getType());
-        switch (mat) {
+        switch (CMIMaterial.get(block.getType())) {
         case CAULDRON:
         case LAVA_CAULDRON:
         case POWDER_SNOW_CAULDRON:
         case WATER_CAULDRON:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    private boolean isCauldronBucketType(CMIMaterial mat) {
+        switch (mat) {
+        case LAVA_BUCKET:
+            return Version.isCurrentEqualOrHigher(Version.v1_17_0);
+        case POWDER_SNOW_BUCKET:
+        case WATER_BUCKET:
             return true;
         default:
             return false;
@@ -1619,17 +1623,22 @@ public class ResidencePlayerListener implements Listener {
             return;
         }
         Block clickBlock = event.getBlockClicked();
-        Location loc;
-
-        if (!player.isSneaking() && Version.isCurrentEqualOrHigher(Version.v1_13_0) && clickBlock.getBlockData() instanceof org.bukkit.block.data.Waterlogged) {
-            // if place inside the block
-            loc = clickBlock.getLocation();
-        } else {
-            // place outside the block
-            loc = clickBlock.getRelative(event.getBlockFace()).getLocation();
-        }
-
         CMIMaterial cmat = CMIMaterial.get(event.getBucket());
+        boolean canPlaceInside = false;
+        // Can be placed inside blocks only when not sneaking
+        if (!player.isSneaking()) {
+            // Cauldron uses CauldronLevelChangeEvent for checks on 1.9+
+            if (Version.isCurrentEqualOrHigher(Version.v1_9_0) && isCauldron(clickBlock) && isCauldronBucketType(cmat)) {
+                return;
+            }
+            if (Version.isCurrentEqualOrHigher(Version.v1_13_0) && cmat != CMIMaterial.LAVA_BUCKET) {
+                canPlaceInside = clickBlock.getBlockData() instanceof org.bukkit.block.data.Waterlogged;
+            }
+        }
+        Location loc = canPlaceInside
+                ? clickBlock.getLocation()
+                : clickBlock.getRelative(event.getBlockFace()).getLocation();
+
         ClaimedResidence res = plugin.getResidenceManager().getByLoc(loc);
         if (res != null) {
             if (plugin.getConfigManager().preventRentModify() && plugin.getConfigManager().enabledRentSystem()) {
