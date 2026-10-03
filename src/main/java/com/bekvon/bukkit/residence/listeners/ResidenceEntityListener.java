@@ -56,6 +56,7 @@ import org.bukkit.event.hanging.HangingBreakByEntityEvent;
 import org.bukkit.event.hanging.HangingBreakEvent;
 import org.bukkit.event.hanging.HangingBreakEvent.RemoveCause;
 import org.bukkit.event.hanging.HangingPlaceEvent;
+import org.bukkit.event.vehicle.VehicleDamageEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
@@ -170,15 +171,11 @@ public class ResidenceEntityListener implements Listener {
         if (CMIMaterial.get(block.getType()) != CMIMaterial.LILY_PAD) {
             return false;
         }
+        List<Entity> passengers = Utils.getPassengers(boat);
         Entity rider = null;
-        if (Version.isCurrentLower(Version.v1_11_2)) {
-            rider = boat.getPassenger();
-        } else {
-            List<Entity> passengers = boat.getPassengers();
-            if (!passengers.isEmpty()) {
-                // first passenger
-                rider = passengers.get(0);
-            }
+        if (!passengers.isEmpty()) {
+            // first passenger
+            rider = passengers.get(0);
         }
         Player riderPlayer = rider instanceof Player ? (Player) rider : null;
         if (riderPlayer != null) {
@@ -199,8 +196,6 @@ public class ResidenceEntityListener implements Listener {
             return;
 
         Entity entity = event.getEntity();
-        if (entity == null)
-            return;
 
         if (!(entity instanceof LivingEntity))
             return;
@@ -328,7 +323,7 @@ public class ResidenceEntityListener implements Listener {
         if (entity == null) {
             return false;
         }
-        if (Version.isCurrentEqualOrHigher(Version.v1_19_R2)) {
+        if (Version.isCurrentEqualOrHigher(Version.v1_19_3)) {
             return entity instanceof org.bukkit.entity.Enemy;
         }
         if (entity instanceof Monster) {
@@ -366,12 +361,10 @@ public class ResidenceEntityListener implements Listener {
         return ent instanceof Projectile;
     }
 
-    @EventHandler(priority = EventPriority.LOWEST)
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void AnimalKilling(EntityDamageEvent event) {
 
         Entity entity = event.getEntity();
-        if (entity == null)
-            return;
 
         if (FlagPermissions.shouldIgnoreCheck(Flags.animalkilling, entity)) {
             return;
@@ -411,15 +404,10 @@ public class ResidenceEntityListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.LOWEST)
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void AnimalKillingByFlame(EntityCombustByEntityEvent event) {
 
-        if (event.isCancelled())
-            return;
-
         Entity entity = event.getEntity();
-        if (entity == null)
-            return;
 
         if (FlagPermissions.shouldIgnoreCheck(Flags.animalkilling, entity)) {
             return;
@@ -454,15 +442,10 @@ public class ResidenceEntityListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.LOWEST)
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void AnimalDamageByMobs(EntityDamageByEntityEvent event) {
 
-        if (event.isCancelled())
-            return;
-
         Entity entity = event.getEntity();
-        if (entity == null)
-            return;
 
         if (FlagPermissions.shouldIgnoreCheck(Flags.animalkilling, entity)) {
             return;
@@ -488,8 +471,7 @@ public class ResidenceEntityListener implements Listener {
             return;
         // disabling event on world
         LivingEntity ent = event.getEntity();
-        if (ent == null)
-            return;
+
         if (plugin.isDisabledWorldListener(ent))
             return;
         if (ent instanceof Player)
@@ -504,65 +486,83 @@ public class ResidenceEntityListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.LOWEST)
-    public void VehicleDestroy(VehicleDestroyEvent event) {
+    // Fix player being able to knock back vehicle before Destroy
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onPlayerDamageVehicle(VehicleDamageEvent event) {
 
-        Entity damager = event.getAttacker();
-        if (damager == null)
-            return;
-
-        if (FlagPermissions.shouldIgnoreCheck(Flags.vehicledestroy, damager)) {
-            return;
-        }
         Vehicle vehicle = event.getVehicle();
 
-        if (shouldBlockVehicleDestroy(damager, vehicle))
-            event.setCancelled(true);
-    }
-
-    @EventHandler(priority = EventPriority.LOWEST)
-    public void vehicleCombust(EntityCombustByEntityEvent event) {
-
-        Entity damager = event.getCombuster();
-        if (damager == null)
-            return;
-
-        if (FlagPermissions.shouldIgnoreCheck(Flags.vehicledestroy, damager)) {
+        if (FlagPermissions.shouldIgnoreCheck(Flags.vehicledestroy, vehicle)) {
             return;
         }
-        if (event.getEntity() instanceof LivingEntity) {
+        Entity attacker = event.getAttacker();
+
+        if (!(attacker instanceof Player)) {
             return;
         }
-        if (!(event.getEntity() instanceof Vehicle))
-            return;
-
-        Vehicle vehicle = (Vehicle) event.getEntity();
-
-        if (shouldBlockVehicleDestroy(damager, vehicle))
+        if (FlagPermissions.shouldDenyAndNotify((Player) attacker, vehicle, Flags.vehicledestroy, null)) {
             event.setCancelled(true);
+        }
     }
 
-    private boolean shouldBlockVehicleDestroy(Entity damager, Vehicle vehicle) {
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onVehicleDestroy(VehicleDestroyEvent event) {
 
-        if (vehicle == null)
-            return false;
+        Vehicle vehicle = event.getVehicle();
 
-        Player cause = Utils.potentialProjectileToPlayer(damager);
+        if (FlagPermissions.shouldIgnoreCheck(Flags.vehicledestroy, vehicle)) {
+            return;
+        }
+        Entity attacker = event.getAttacker();
+        // Entity destroys vehicle
+        if (attacker != null) {
+            if (shouldDenyEntityDestroyVehicle(attacker, vehicle)) {
+                event.setCancelled(true);
+            }
+            // Even if BlockExplodeEvent is canceled, vehicles can still be destroyed
+            // Fix bed and respawn anchor explosions destroying vehicles
+        } else if (Version.isCurrentEqualOrHigher(Version.v26_1_2) && Version.isPaperBranch()
+                && event.getDamageSource().getDamageType() == org.bukkit.damage.DamageType.BAD_RESPAWN_POINT) {
+            if (FlagPermissions.has(vehicle.getLocation(), Flags.vehicledestroy, FlagCombo.OnlyFalse)) {
+                event.setCancelled(true);
+            }
+        }
+    }
 
-        if (cause != null) {
-            return FlagPermissions.shouldDenyAndNotify(cause, vehicle, Flags.vehicledestroy, null);
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onNonLivingVehicleCombust(EntityCombustByEntityEvent event) {
 
+        Entity entity = event.getEntity();
+
+        if (FlagPermissions.shouldIgnoreCheck(Flags.vehicledestroy, entity)) {
+            return;
+        }
+        if (entity instanceof LivingEntity) {
+            return;
+        }
+        if (!(entity instanceof Vehicle)) {
+            return;
+        }
+        if (shouldDenyEntityDestroyVehicle(event.getCombuster(), (Vehicle) entity)) {
+            event.setCancelled(true);
+        }
+    }
+
+    private boolean shouldDenyEntityDestroyVehicle(Entity attacker, Vehicle vehicle) {
+
+        Player player = Utils.potentialProjectileToPlayer(attacker);
+
+        if (player != null) {
+            return FlagPermissions.shouldDenyAndNotify(player, vehicle, Flags.vehicledestroy, null);
         } else {
             return FlagPermissions.has(vehicle.getLocation(), Flags.vehicledestroy, FlagCombo.OnlyFalse);
         }
     }
 
-    @EventHandler(priority = EventPriority.LOWEST)
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void MonsterKilling(EntityDamageByEntityEvent event) {
 
         Entity entity = event.getEntity();
-        if (entity == null)
-            return;
 
         if (FlagPermissions.shouldIgnoreCheck(Flags.mobkilling, entity)) {
             return;
@@ -631,8 +631,7 @@ public class ResidenceEntityListener implements Listener {
     public void onCreatureSpawn(CreatureSpawnEvent event) {
         // disabling event on world
         Entity ent = event.getEntity();
-        if (ent == null)
-            return;
+
         if (plugin.isDisabledWorldListener(ent))
             return;
         FlagPermissions perms = FlagPermissions.getPerms(event.getLocation());
@@ -787,8 +786,6 @@ public class ResidenceEntityListener implements Listener {
     public void onHangingBreakEventByExplosion(HangingBreakEvent event) {
 
         Hanging ent = event.getEntity();
-        if (ent == null)
-            return;
 
         if (FlagPermissions.shouldIgnoreCheck(Flags.explode, ent)) {
             return;
@@ -806,8 +803,6 @@ public class ResidenceEntityListener implements Listener {
     public void onHangingBreakEvent(HangingBreakEvent event) {
 
         Hanging ent = event.getEntity();
-        if (ent == null)
-            return;
 
         if (FlagPermissions.shouldIgnoreCheck(Flags.destroy, ent)) {
             return;
@@ -858,8 +853,6 @@ public class ResidenceEntityListener implements Listener {
     public void onEntityCombust(EntityCombustEvent event) {
 
         Entity ent = event.getEntity();
-        if (ent == null)
-            return;
 
         if (FlagPermissions.shouldIgnoreCheck(Flags.burn, ent)) {
             return;
@@ -1194,7 +1187,6 @@ public class ResidenceEntityListener implements Listener {
         if (perms.has(Flags.mobgriefing, perms.has(Flags.destroy, true))) {
             return;
         }
-
         event.setCancelled(true);
     }
 
@@ -1238,21 +1230,21 @@ public class ResidenceEntityListener implements Listener {
                 }
                 continue;
             }
-
-            if (target.getType() != EntityType.PLAYER)
+            if (!(target instanceof Player)) {
                 continue;
-            Boolean tgtpvp = FlagPermissions.getPerms(target.getLocation()).has(Flags.pvp, FlagCombo.TrueOrNone);
+            }
+            boolean tgtpvp = FlagPermissions.getPerms(target.getLocation()).has(Flags.pvp, FlagCombo.TrueOrNone);
             if (!srcpvp || !tgtpvp) {
                 event.setIntensity(target, 0);
                 continue;
             }
 
-            ClaimedResidence area = plugin.getResidenceManager().getByLoc(target.getLocation());
+            ClaimedResidence area = ClaimedResidence.getByLoc(target.getLocation());
 
-            if (target instanceof Player && shooter instanceof Player) {
+            if (shooter instanceof Player) {
                 Player attacker = (Player) shooter;
-                ClaimedResidence srcarea = plugin.getResidenceManager().getByLoc(attacker.getLocation());
-                if (srcarea != null && area != null && srcarea.equals(area)
+                ClaimedResidence srcarea = ClaimedResidence.getByLoc(attacker.getLocation());
+                if (srcarea != null && srcarea == area
                         && srcarea.getPermissions().playerHas((Player) target, Flags.friendlyfire, FlagCombo.OnlyFalse)
                         && srcarea.getPermissions().playerHas(attacker, Flags.friendlyfire, FlagCombo.OnlyFalse)) {
                     CMIActionBar.send(attacker, plugin.getLM().getMessage(lm.General_NoFriendlyFire));
@@ -1309,7 +1301,7 @@ public class ResidenceEntityListener implements Listener {
         if (Version.isCurrentEqualOrHigher(Version.v1_21_0) && Version.isPaperBranch()) {
             return;
         }
-        if (Version.isCurrentEqualOrLower(Version.v1_14_R1))
+        if (Version.isCurrentEqualOrLower(Version.v1_14_0))
             return;
 
         if (event.getBow() == null)
@@ -1558,6 +1550,8 @@ public class ResidenceEntityListener implements Listener {
             }
             return;
         }
+        // Even if BlockExplodeEvent is canceled, damage will still be dealt
+        // Fix bed and respawn anchor explosions damaging entities
         if (cause == DamageCause.BLOCK_EXPLOSION) {
             if (Flags.pvp.isGlobalyEnabled() && entity instanceof Player) {
                 if (FlagPermissions.has(entity.getLocation(), Flags.pvp, FlagCombo.OnlyFalse)) {
