@@ -199,6 +199,9 @@ public class ResidenceBlockListener implements Listener {
         Player player = event.getPlayer();
 
         if (player != null) {
+            if (ResPerm.bypass_build.hasPermission(player, 10000L)) {
+                return;
+            }
             // cancel the event if the player lacks build permission at the source location
             if (FlagPermissions.shouldDenyAndNotify(player, sourceLoc, Flags.build, null)) {
                 event.setCancelled(true);
