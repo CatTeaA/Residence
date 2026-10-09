@@ -1,6 +1,5 @@
 package com.bekvon.bukkit.residence.listeners;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,14 +18,12 @@ import org.bukkit.entity.Hanging;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Snowball;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.entity.ThrownPotion;
 import org.bukkit.entity.Vehicle;
-import org.bukkit.entity.Witch;
 import org.bukkit.entity.Wither;
 import org.bukkit.entity.WitherSkull;
 import org.bukkit.entity.minecart.ExplosiveMinecart;
@@ -57,9 +54,13 @@ import org.bukkit.event.hanging.HangingBreakEvent.RemoveCause;
 import org.bukkit.event.hanging.HangingPlaceEvent;
 import org.bukkit.event.vehicle.VehicleDamageEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
 import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
+import org.bukkit.projectiles.BlockProjectileSource;
 import org.bukkit.projectiles.ProjectileSource;
 
 import com.bekvon.bukkit.residence.ConfigManager;
@@ -71,6 +72,7 @@ import com.bekvon.bukkit.residence.permissions.PermissionManager.ResPerm;
 import com.bekvon.bukkit.residence.protection.ClaimedResidence;
 import com.bekvon.bukkit.residence.protection.FlagPermissions;
 import com.bekvon.bukkit.residence.protection.FlagPermissions.FlagCombo;
+import com.bekvon.bukkit.residence.utils.PotionUtils;
 import com.bekvon.bukkit.residence.utils.Utils;
 
 import net.Zrips.CMILib.ActionBar.CMIActionBar;
@@ -727,17 +729,21 @@ public class ResidenceEntityListener implements Listener {
         CMIEntityType type = CMIEntityType.get(event.getEntityType());
         if (type != null) {
             switch (type) {
-            case EXPERIENCE_BOTTLE:
-            case FIREWORK_ROCKET:
-                return;
-            case ENDER_PEARL:
-                flag = Flags.enderpearl;
-                break;
-            case WIND_CHARGE:
-                flag = Flags.windexplode;
-                break;
-            default:
-                break;
+                case EXPERIENCE_BOTTLE:
+                case FIREWORK_ROCKET:
+                    return;
+                case ENDER_PEARL:
+                    flag = Flags.enderpearl;
+                    break;
+                case WIND_CHARGE:
+                    flag = Flags.windexplode;
+                    break;
+                case SPLASH_POTION:
+                case LINGERING_POTION:
+                    flag = Flags.potionthrowing;
+                    break;
+                default:
+                    break;
             }
         }
         // Disabling listener if flag disabled globally
@@ -753,6 +759,10 @@ public class ResidenceEntityListener implements Listener {
             }
 
         } else {
+            // Flags.potionthrowing only controls player-thrown potions
+            if (flag == Flags.potionthrowing) {
+                flag = Flags.shoot;
+            }
             FlagPermissions perms = FlagPermissions.getPerms(projectile.getLocation());
             if (perms.has(flag, FlagCombo.OnlyFalse)) {
                 event.setCancelled(true);
@@ -1161,98 +1171,97 @@ public class ResidenceEntityListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onSplashPotion(PotionSplashEvent event) {
+    public void onPotionSplash(PotionSplashEvent event) {
 
         ThrownPotion potion = event.getPotion();
 
-        if (FlagPermissions.shouldIgnoreCheck(Flags.pvp, potion)) {
+        if (plugin.isDisabledWorldListener(potion)) {
             return;
         }
-        ProjectileSource shooter = potion.getShooter();
-
-        if (shooter instanceof Witch)
-            return;
-
-        boolean harmfull = false;
-
-        mein: for (PotionEffect one : potion.getEffects()) {
-            for (String oneHarm : plugin.getConfigManager().getNegativePotionEffects()) {
-                if (oneHarm.equalsIgnoreCase(one.getType().getName())) {
-                    harmfull = true;
-                    break mein;
-                }
-            }
-        }
-
-        if (!harmfull)
-            return;
-
-        boolean shooterIsPlayer = shooter instanceof Player && !((Player)shooter).hasMetadata("NPC");
-        boolean shouldDenyAttackerPVP = false;
-
+        ProjectileSource attacker = potion.getShooter();
+        boolean isPlayerAttacker = attacker instanceof Player;
         ClaimedResidence attackerRes = null;
-        FlagPermissions attackerPerms = null;
 
-        if (shooterIsPlayer) {
-            Player player = (Player) shooter;
+        if (isPlayerAttacker) {
+            if (!Flags.potionthrowing.isGlobalyEnabled()) {
+                return;
+            }
+            Player player = (Player) attacker;
+            if (player.hasMetadata("NPC")) {
+                return;
+            }
             attackerRes = ClaimedResidence.getByLoc(player.getLocation());
-            attackerPerms = (attackerRes != null)
+            FlagPermissions attackerPerms = (attackerRes != null)
                     ? attackerRes.getPermissions()
-                    : plugin.getWorldFlags().getPerms(player.getWorld());
-
-            shouldDenyAttackerPVP = attackerPerms.has(Flags.pvp, FlagCombo.OnlyFalse);
+                    : Residence.getInstance().getWorldFlags().getPerms(player.getWorld());
+            if (attackerPerms.playerHas(player, Flags.potionthrowing, FlagCombo.OnlyFalse) && !ResAdmin.isResAdmin(player)) {
+                lm.Flag_Deny.sendMessage(player, Flags.potionthrowing);
+                event.setCancelled(true);
+                return;
+            }
+            // Now handling Potion thrown by dispensers
+        } else if (attacker instanceof BlockProjectileSource) {
+            ClaimedResidence potionHitRes = ClaimedResidence.getByLoc(potion.getLocation());
+            if (potionHitRes == null) {
+                return;
+            }
+            Location shooterLoc = ((BlockProjectileSource) attacker).getBlock().getLocation();
+            ClaimedResidence shooterRes = ClaimedResidence.getByLoc(shooterLoc);
+            // Non-player shooter and hit location in same Residence or same owner; skip check
+            if (potionHitRes == shooterRes || (shooterRes != null && shooterRes.isOwner(potionHitRes.getOwner()))) {
+                return;
+            }
+            // Prevent Potion from being spawned into a Residence from outside
+            if (potionHitRes.getPermissions().has(Flags.build, FlagCombo.OnlyFalse)) {
+                event.setCancelled(true);
+            }
+            return;
         }
-        Flags flag = null;
+        // Potion allows Splash; now handling potion effects on entities
+        boolean isHealingEffect = false;
+        boolean isDamageEffect = false;
+        boolean isHarmfulEffect = false;
 
-        for (LivingEntity victim : event.getAffectedEntities()) {
-
-            boolean shouldDenyDamage = false;
-
-            if (Utils.isAnimal(victim)) {
-                shouldDenyDamage = shooterIsPlayer
-                        ? FlagPermissions.has(victim.getLocation(), (Player) shooter, Flags.animalkilling, FlagCombo.OnlyFalse)
-                        : FlagPermissions.has(victim.getLocation(), Flags.animalkilling, FlagCombo.OnlyFalse);
-
-                flag = shouldDenyDamage ? Flags.animalkilling : null;
-                // Now both the attacker and the victim are guaranteed to be players
-            } else if (shooterIsPlayer && victim instanceof Player && !victim.hasMetadata("NPC")) {
-                // if PVP disabled at attacker location
-                if (shouldDenyAttackerPVP) {
-                    shouldDenyDamage = true;
-                    flag = Flags.pvp;
-
-                } else {
-                    Player victimPlayer = (Player) victim;
-                    ClaimedResidence victimRes = ClaimedResidence.getByLoc(victimPlayer.getLocation());
-                    FlagPermissions victimPerms = (victimRes != null)
-                            ? victimRes.getPermissions()
-                            : plugin.getWorldFlags().getPerms(victimPlayer.getWorld());
-                    // if PVP disabled at victim location
-                    if (victimPerms.has(Flags.pvp, FlagCombo.OnlyFalse)) {
-                        shouldDenyDamage = true;
-                        flag = Flags.pvp;
-
-                    } else {
-                        Player attackerPlayer = (Player) shooter;
-                        if (attackerRes != null && attackerRes == victimRes
-                                && attackerPerms.playerHas(attackerPlayer, Flags.friendlyfire, FlagCombo.OnlyFalse)
-                                && attackerPerms.playerHas(victimPlayer, Flags.friendlyfire, FlagCombo.OnlyFalse)) {
-                            shouldDenyDamage = true;
-                            flag = Flags.friendlyfire;
-                        }
-                    }
+        ItemMeta itemMeta = potion.getItem().getItemMeta();
+        if (!(itemMeta instanceof PotionMeta)) {
+            return;
+        }
+        // Start - Get the potion effect type
+        for (PotionEffect effect : potion.getEffects()) {
+            PotionEffectType type = effect.getType();
+            if (PotionUtils.isPotionEffectType(type, "Healing")) {
+                isHealingEffect = true;
+                break;
+            } else if (PotionUtils.isPotionEffectType(type, "Damage")) {
+                isDamageEffect = true;
+                break;
+            } else if (PotionUtils.isPotionEffectType(type, "Harmful")) {
+                isHarmfulEffect = true;
+                break;
+            }
+        }
+        // End - Get the potion effect type
+        if (isHealingEffect && Flags.mobkilling.isGlobalyEnabled()) {
+            for (LivingEntity victim : event.getAffectedEntities()) {
+                if (PotionUtils.shouldDenyHealingEffect(victim, attacker, isPlayerAttacker)) {
+                    event.setIntensity(victim, 0);
                 }
             }
-            if (shouldDenyDamage) {
-                event.setIntensity(victim, 0);
+
+        } else if (isDamageEffect) {
+            for (LivingEntity victim : event.getAffectedEntities()) {
+                if (PotionUtils.shouldDenyDamageEffect(victim, attacker, attackerRes, isPlayerAttacker)) {
+                    event.setIntensity(victim, 0);
+                }
             }
-        }
-        if (shooterIsPlayer) {
-            if (flag == Flags.friendlyfire) {
-                CMIActionBar.send((Player) shooter, plugin.getLM().getMessage(lm.General_NoFriendlyFire));
-            } else if (flag != null) {
-                lm.Flag_Deny.sendMessage((Player) shooter, flag);
+
+        } else if (isHarmfulEffect) {
+            for (LivingEntity victim : event.getAffectedEntities()) {
+                if (PotionUtils.shouldDenyHarmfulEffect(victim, attacker, attackerRes, isPlayerAttacker)) {
+                    event.setIntensity(victim, 0);
+                }
             }
+
         }
     }
 
@@ -1368,6 +1377,11 @@ public class ResidenceEntityListener implements Listener {
 
         }
         if (attackerPlayer == null || attackerPlayer.hasMetadata("NPC")) {
+            return;
+        }
+        // Skip the PvP check when players attack themselves
+        // e.g. Players fire an arrow from above and deliberately step into it to hit themselves
+        if (attackerPlayer == victim) {
             return;
         }
         // Now both the attacker and the victim are guaranteed to be players

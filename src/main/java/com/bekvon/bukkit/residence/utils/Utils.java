@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
+import com.bekvon.bukkit.residence.listeners.ResidenceListener1_14;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -16,18 +17,22 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Animals;
 import org.bukkit.entity.Bat;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.IronGolem;
 import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.NPC;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
+import org.bukkit.entity.Skeleton;
 import org.bukkit.entity.Snowman;
 import org.bukkit.entity.Tameable;
 import org.bukkit.entity.Vehicle;
 import org.bukkit.entity.Villager;
 import org.bukkit.entity.WaterMob;
+import org.bukkit.entity.Wither;
 import org.bukkit.entity.minecart.PoweredMinecart;
+import org.bukkit.entity.Zombie;
 import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -423,5 +428,29 @@ public class Utils {
     public static boolean isContainer(Material mat) {
         return FlagPermissions.getMaterialUseFlagList().get(mat) == Flags.container
                 || Residence.getInstance().getConfigManager().getCustomContainers().contains(mat);
+    }
+
+    public static boolean isUndead(Entity entity) {
+        if (entity == null) {
+            return false;
+        }
+        EntityType type = entity.getType();
+        if (Version.isCurrentEqualOrHigher(Version.v1_14_0)) {
+            return ResidenceListener1_14.isEntityTag(type, "undead");
+        }
+        if (entity instanceof Zombie || entity instanceof Skeleton || entity instanceof Wither) {
+            return true;
+        }
+        CMIEntityType cType = CMIEntityType.get(type);
+        if (cType == null) {
+            return false;
+        }
+        switch (cType) {
+            case SKELETON_HORSE:
+            case ZOMBIE_HORSE:
+                return true;
+            default:
+                return false;
+        }
     }
 }
