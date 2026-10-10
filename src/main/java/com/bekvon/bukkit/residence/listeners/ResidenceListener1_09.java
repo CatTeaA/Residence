@@ -5,8 +5,8 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.AreaEffectCloud;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.LingeringPotion;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -14,6 +14,7 @@ import org.bukkit.event.block.CauldronLevelChangeEvent;
 import org.bukkit.event.entity.AreaEffectCloudApplyEvent;
 import org.bukkit.event.entity.EntityToggleGlideEvent;
 import org.bukkit.event.entity.LingeringPotionSplashEvent;
+import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.inventory.EquipmentSlot;
@@ -111,19 +112,15 @@ public class ResidenceListener1_09 implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onLingeringPotionSplash(LingeringPotionSplashEvent event) {
-
-        Entity potion = event.getEntity();
+        // Legacy version compatibility:
+        // getEntity() signature: 1.14+ -> ThrownPotion, 1.9-1.13.2 -> LingeringPotion.
+        Projectile potion = ((ProjectileHitEvent) event).getEntity();
 
         if (plugin.isDisabledWorldListener(potion)) {
             return;
         }
-        ProjectileSource shooter = null;
-        // Legacy version compatibility:
-        // getEntity() signature: 1.14+ -> ThrownPotion, 1.9-1.13.2 -> LingeringPotion.
-        // Runtime entity: always LingeringPotion because this is LingeringPotionSplashEvent.
-        if (potion instanceof LingeringPotion) {
-            shooter = ((LingeringPotion) potion).getShooter();
-        }
+        ProjectileSource shooter = potion.getShooter();
+
         if (shooter instanceof Player) {
             if (!Flags.potionthrowing.isGlobalyEnabled()) {
                 return;
