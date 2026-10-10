@@ -729,21 +729,21 @@ public class ResidenceEntityListener implements Listener {
         CMIEntityType type = CMIEntityType.get(event.getEntityType());
         if (type != null) {
             switch (type) {
-                case EXPERIENCE_BOTTLE:
-                case FIREWORK_ROCKET:
-                    return;
-                case ENDER_PEARL:
-                    flag = Flags.enderpearl;
-                    break;
-                case WIND_CHARGE:
-                    flag = Flags.windexplode;
-                    break;
-                case SPLASH_POTION:
-                case LINGERING_POTION:
-                    flag = Flags.potionthrowing;
-                    break;
-                default:
-                    break;
+            case EXPERIENCE_BOTTLE:
+            case FIREWORK_ROCKET:
+                return;
+            case ENDER_PEARL:
+                flag = Flags.enderpearl;
+                break;
+            case WIND_CHARGE:
+                flag = Flags.windexplode;
+                break;
+            case SPLASH_POTION:
+            case LINGERING_POTION:
+                flag = Flags.potionthrowing;
+                break;
+            default:
+                break;
             }
         }
         // Disabling listener if flag disabled globally
