@@ -4,7 +4,6 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.AbstractHorse;
-import org.bukkit.entity.AbstractWindCharge;
 import org.bukkit.entity.Ageable;
 import org.bukkit.entity.Animals;
 import org.bukkit.entity.Boat;
@@ -14,7 +13,6 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Pig;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Strider;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -166,7 +164,7 @@ public class ResidenceListener1_21 implements Listener {
             EntityEquipment golemInv = ((LivingEntity) entity).getEquipment();
             // Right-click to remove items from holding copper_golem
             if (golemInv != null && golemInv.getItemInMainHand().getType() != Material.AIR) {
-                return FlagPermissions.shouldDenyAndNotify(player, entity, Flags.container, null);
+                return FlagPermissions.shouldDenyAndNotify(player, entity, Flags.container);
             }
         }
         // Now Copper_golem has no item in hand
