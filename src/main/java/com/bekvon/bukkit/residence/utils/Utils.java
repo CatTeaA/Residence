@@ -18,6 +18,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.IronGolem;
 import org.bukkit.entity.ItemFrame;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.NPC;
 import org.bukkit.entity.Player;
@@ -35,6 +36,7 @@ import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
+import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
@@ -336,7 +338,7 @@ public class Utils {
         return entity instanceof Tameable && ((Tameable) entity).isTamed();
     }
 
-    public static boolean isVillagerOrTrader(Entity entity) {
+    public static boolean isAbstractVillager(Entity entity) {
         if (Version.isCurrentEqualOrHigher(Version.v1_14_0)) {
             return entity instanceof org.bukkit.entity.AbstractVillager;
         }
@@ -369,7 +371,36 @@ public class Utils {
     public static boolean isContainerEntityWithoutGui(Entity entity) {
         return  entity instanceof ItemFrame
                 || entity instanceof PoweredMinecart
-                || (Version.isCurrentEqualOrHigher(Version.v1_19_0) && entity instanceof org.bukkit.entity.Allay);
+                || (Version.isCurrentEqualOrHigher(Version.v1_19_0) && entity instanceof org.bukkit.entity.Allay)
+                || isCopperGolemHoldingItem(entity);
+    }
+
+    private static boolean isCopperGolemHoldingItem(Entity entity) {
+        if (isCopperGolem(entity)) {
+            EntityEquipment equipment = ((LivingEntity) entity).getEquipment();
+            return equipment != null && equipment.getItemInMainHand().getType() != Material.AIR;
+        }
+        return false;
+    }
+
+    public static boolean isReadyToChangeCopperGolem(Entity entity, ItemStack item) {
+        if (item != null && isCopperGolem(entity)) {
+            Material mat = item.getType();
+            // Items that can change CopperGolem's state
+            return mat == Material.HONEYCOMB || ResidenceListener1_14.isItemTag(mat, "axes");
+        }
+        return false;
+    }
+
+    public static boolean isIgniteTntSulfurCube(Entity entity, ItemStack item) {
+        if (item != null && Version.isCurrentEqualOrHigher(Version.v26_2_0) && entity instanceof org.bukkit.entity.SulfurCube) {
+            EntityEquipment equipment = ((LivingEntity) entity).getEquipment();
+            if (equipment != null && equipment.getItem(EquipmentSlot.BODY).getType() == Material.TNT) {
+                Material mat = item.getType();
+                return mat == Material.FLINT_AND_STEEL || mat == Material.FIRE_CHARGE;
+            }
+        }
+        return false;
     }
 
     public static boolean isChorusTeleport(TeleportCause tpcause) {
