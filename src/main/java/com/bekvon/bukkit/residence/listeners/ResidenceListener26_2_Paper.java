@@ -6,6 +6,7 @@ import org.bukkit.entity.Boat;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Minecart;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.SulfurCube;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -81,5 +82,9 @@ public class ResidenceListener26_2_Paper implements Listener {
 
         }
         return FlagPermissions.shouldDenyAndNotify(pushedBy, target, Flags.push, subFlag);
+    }
+
+    public static boolean isSulfurCubeHoldingBlock(Entity entity) {
+        return entity instanceof SulfurCube && !((SulfurCube) entity).getEquipped().isEmpty();
     }
 }
