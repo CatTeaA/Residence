@@ -12,9 +12,6 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.FallingBlock;
-import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Snowman;
 import org.bukkit.entity.minecart.HopperMinecart;
@@ -39,8 +36,6 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.BlockSpreadEvent;
 import org.bukkit.event.block.EntityBlockFormEvent;
 import org.bukkit.event.block.LeavesDecayEvent;
-import org.bukkit.event.entity.EntityChangeBlockEvent;
-import org.bukkit.event.entity.EntityPortalEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.inventory.InventoryType;
@@ -49,8 +44,6 @@ import org.bukkit.event.world.PortalCreateEvent;
 import org.bukkit.event.world.StructureGrowEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
-import org.bukkit.metadata.FixedMetadataValue;
-import org.bukkit.metadata.MetadataValue;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 
@@ -427,108 +420,6 @@ public class ResidenceBlockListener implements Listener {
         FlagPermissions perms = FlagPermissions.getPerms(block.getLocation());
         if (!perms.has(Flags.icemelt, true)) {
             event.setCancelled(true);
-        }
-    }
-
-    public static final String SourceResidenceName = "SourceResidenceName";
-
-    @EventHandler
-    public void onEntityChangeBlock(EntityChangeBlockEvent event) {
-        // Disabling listener if flag disabled globally
-        if (!Flags.fallinprotection.isGlobalyEnabled())
-            return;
-        if (event.getEntityType() != EntityType.FALLING_BLOCK)
-            return;
-        Entity ent = event.getEntity();
-
-        if (!ent.hasMetadata(SourceResidenceName) && /*
-                                                      * Equals to air when generic falling block is spawned, not when falling block
-                                                      * originates from spawnegg
-                                                      */ event.getTo() == Material.AIR) {
-
-            ClaimedResidence res = plugin.getResidenceManager().getByLoc(ent.getLocation());
-            String resName = res == null ? "NULL" : res.getName();
-            ent.setMetadata(SourceResidenceName, new FixedMetadataValue(plugin, resName));
-            return;
-        }
-
-        ClaimedResidence res = plugin.getResidenceManager().getByLoc(ent.getLocation());
-
-        if (res != null && res.getPermissions().has(Flags.fallinprotection, FlagCombo.OnlyFalse))
-            return;
-
-        String resName = res == null ? "NULL" : res.getName();
-
-        String saved = "NULL";
-        if (!ent.hasMetadata(SourceResidenceName))
-            return;
-
-        @NotNull
-        List<MetadataValue> meta = ent.getMetadata(SourceResidenceName);
-
-        if (meta.isEmpty())
-            return;
-
-        saved = ent.getMetadata(SourceResidenceName).get(0).asString();
-
-        if (res == null || saved.equalsIgnoreCase(resName))
-            return;
-
-        event.setCancelled(true);
-        ent.remove();
-    }
-
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onBlockFall(EntityChangeBlockEvent event) {
-
-        Block block = event.getBlock();
-
-        if (FlagPermissions.shouldIgnoreCheck(Flags.fallinprotection, block)) {
-            return;
-        }
-        if (!plugin.getConfigManager().isBlockFall())
-            return;
-
-        if ((event.getEntityType() != EntityType.FALLING_BLOCK))
-            return;
-
-        Material typeTo = event.getTo();
-        if (typeTo.hasGravity() || CMIMaterial.get(typeTo).equals(CMIMaterial.SCAFFOLDING))
-            return;
-
-        if (!plugin.getConfigManager().getBlockFallWorlds().contains(block.getLocation().getWorld().getName()))
-            return;
-
-        if (block.getY() <= plugin.getConfigManager().getBlockFallLevel())
-            return;
-
-        ClaimedResidence res = plugin.getResidenceManager().getByLoc(block.getLocation());
-
-        if (res != null)
-            event.getEntity().setMetadata(SourceResidenceName, new FixedMetadataValue(plugin, res.getName()));
-    }
-
-    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
-    public void onEntityPortal(EntityPortalEvent event) {
-
-        Entity entity = event.getEntity();
-
-        if (plugin.isDisabledWorldListener(entity)) {
-            return;
-        }
-        if (Flags.fallinprotection.isGlobalyEnabled() && entity instanceof FallingBlock) {
-
-            ClaimedResidence toRes = ClaimedResidence.getByLoc(event.getTo());
-            if (toRes != null && toRes.getPermissions().has(Flags.fallinprotection, FlagCombo.TrueOrNone)) {
-                event.setCancelled(true);
-            }
-
-        } else if (Flags.itemdrop.isGlobalyEnabled() && entity instanceof Item) {
-
-            if (FlagPermissions.has(event.getTo(), Flags.itemdrop, FlagCombo.OnlyFalse)) {
-                event.setCancelled(true);
-            }
-
         }
     }
 
