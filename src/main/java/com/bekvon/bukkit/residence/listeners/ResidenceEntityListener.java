@@ -138,8 +138,18 @@ public class ResidenceEntityListener implements Listener {
             shouldDeny = FlagPermissions.has(block.getLocation(), Flags.animalgriefing, FlagCombo.OnlyFalse);
 
         } else if (Flags.witherdestruction.isGlobalyEnabled() && entity instanceof Wither) {
-            FlagPermissions perms = FlagPermissions.getPerms(block.getLocation());
-            shouldDeny = !perms.has(Flags.witherdestruction, perms.has(Flags.destroy, true));
+            ClaimedResidence targetRes = ClaimedResidence.getByLoc(block.getLocation());
+            FlagPermissions perms = FlagPermissions.getResOrWorldPerms(targetRes, block);
+
+            if (!perms.has(Flags.witherdestruction, perms.has(Flags.destroy, true))) {
+                shouldDeny = true;
+
+            } else if (shouldCheckOrigin(targetRes, perms)) {
+                Location origin = Utils.getSpawnLocation(entity);
+                boolean hasOrigin = origin != null;
+                ClaimedResidence originRes = hasOrigin ? ClaimedResidence.getByLoc(origin) : null;
+                shouldDeny = shouldDenyExternalOriginBreak(targetRes, perms, originRes, hasOrigin);
+            }
 
         } else if (Flags.mobgriefing.isGlobalyEnabled() && Utils.isMonster(entity)) {
             FlagPermissions perms = FlagPermissions.getPerms(block.getLocation());
@@ -191,11 +201,9 @@ public class ResidenceEntityListener implements Listener {
             return false;
         }
         List<Entity> passengers = Utils.getPassengers(boat);
-        Entity rider = null;
-        if (!passengers.isEmpty()) {
-            // first passenger
-            rider = passengers.get(0);
-        }
+        // first passenger
+        Entity rider = passengers.isEmpty() ? null : passengers.get(0);
+
         Player player = rider instanceof Player ? (Player) rider : null;
         if (player != null) {
             return FlagPermissions.shouldDenyAndNotify(player, block, Flags.destroy, null, false);
@@ -785,7 +793,7 @@ public class ResidenceEntityListener implements Listener {
             return;
 
         FlagPermissions perms = FlagPermissions.getPerms(ent.getLocation());
-        if (!perms.has(Flags.explode, perms.has(Flags.destroy, true))) {
+        if (!perms.has(Flags.explode, true) || !perms.has(Flags.destroy, perms.has(Flags.build, true))) {
             event.setCancelled(true);
         }
     }
@@ -877,10 +885,14 @@ public class ResidenceEntityListener implements Listener {
                 return;
             }
             perms = FlagPermissions.getPerms(entity.getLocation());
-            if (!perms.has(Flags.explode, perms.has(Flags.destroy, true))) {
-                shouldDeny = true;
-            }
+            shouldDeny = !perms.has(Flags.explode, perms.has(Flags.destroy, true));
+
         } else {
+            ClaimedResidence targetRes;
+            ClaimedResidence originRes;
+            Location entityLoc;
+            boolean hasOrigin;
+
             switch (type) {
             case BREEZE_WIND_CHARGE:
             case WIND_CHARGE:
@@ -890,24 +902,35 @@ public class ResidenceEntityListener implements Listener {
                 if (!Flags.creeper.isGlobalyEnabled()) {
                     return;
                 }
-                perms = FlagPermissions.getPerms(entity.getLocation());
-                if (!perms.has(Flags.creeper, perms.has(Flags.explode, true))) {
-                    shouldDeny = !plugin.getConfigManager().isCreeperExplodeBelow()
-                            || entity.getLocation().getBlockY() >= plugin.getConfigManager().getCreeperExplodeBelowLevel()
-                            || ClaimedResidence.getByLoc(entity.getLocation()) != null;
-                    shouldRemove = shouldDeny;
-                }
+                entityLoc = entity.getLocation();
+                targetRes = ClaimedResidence.getByLoc(entityLoc);
+                perms = FlagPermissions.getResOrWorldPerms(targetRes, entity);
+
+                shouldDeny = !perms.has(Flags.creeper, perms.has(Flags.explode, true))
+                        && (targetRes != null || !plugin.getConfigManager().isCreeperExplodeBelow()
+                        || entityLoc.getBlockY() >= plugin.getConfigManager().getCreeperExplodeBelowLevel());
+                shouldRemove = shouldDeny;
                 break;
             case TNT:
             case TNT_MINECART:
                 if (!Flags.tnt.isGlobalyEnabled()) {
                     return;
                 }
-                perms = FlagPermissions.getPerms(entity.getLocation());
+                entityLoc = entity.getLocation();
+                targetRes = ClaimedResidence.getByLoc(entityLoc);
+                perms = FlagPermissions.getResOrWorldPerms(targetRes, entity);
+
                 if (!perms.has(Flags.tnt, perms.has(Flags.explode, true))) {
-                    shouldDeny = !plugin.getConfigManager().isTNTExplodeBelow()
-                            || entity.getLocation().getBlockY() >= plugin.getConfigManager().getTNTExplodeBelowLevel()
-                            || ClaimedResidence.getByLoc(entity.getLocation()) != null;
+                    shouldDeny = targetRes != null || !plugin.getConfigManager().isTNTExplodeBelow()
+                            || entityLoc.getBlockY() >= plugin.getConfigManager().getTNTExplodeBelowLevel();
+                    shouldRemove = shouldDeny;
+
+                } else if (shouldCheckOrigin(targetRes, perms)) {
+                    Location origin = Utils.getSpawnLocation(entity);
+                    hasOrigin = origin != null;
+                    originRes = hasOrigin ? ClaimedResidence.getByLoc(origin) : null;
+
+                    shouldDeny = shouldDenyExternalOriginBreak(targetRes, perms, originRes, hasOrigin);
                     shouldRemove = shouldDeny;
                 }
                 break;
@@ -917,21 +940,30 @@ public class ResidenceEntityListener implements Listener {
                     return;
                 }
                 perms = FlagPermissions.getPerms(entity.getLocation());
-                if ((Flags.explode.isGlobalyEnabled() && !perms.has(Flags.explode, true))
-                        || (Flags.fireball.isGlobalyEnabled() && !perms.has(Flags.fireball, true))) {
-                    shouldDeny = true;
-                    shouldRemove = true;
-                }
+                shouldDeny = (Flags.explode.isGlobalyEnabled() && !perms.has(Flags.explode, true))
+                        || (Flags.fireball.isGlobalyEnabled() && !perms.has(Flags.fireball, true));
+                shouldRemove = shouldDeny;
                 break;
             case WITHER:
             case WITHER_SKULL:
                 if (!Flags.explode.isGlobalyEnabled()) {
                     return;
                 }
-                perms = FlagPermissions.getPerms(entity.getLocation());
+                entityLoc = entity.getLocation();
+                targetRes = ClaimedResidence.getByLoc(entityLoc);
+                perms = FlagPermissions.getResOrWorldPerms(targetRes, entity);
+
                 if (!perms.has(Flags.explode, perms.has(Flags.witherdestruction, true))) {
                     shouldDeny = true;
                     shouldRemove = entity instanceof WitherSkull;
+
+                } else if (shouldCheckOrigin(targetRes, perms)) {
+                    Location origin = Utils.getSpawnLocation(entity);
+                    hasOrigin = origin != null;
+                    originRes = hasOrigin ? ClaimedResidence.getByLoc(origin) : null;
+
+                    shouldDeny = shouldDenyExternalOriginBreak(targetRes, perms, originRes, hasOrigin);
+                    shouldRemove = shouldDeny && entity instanceof WitherSkull;
                 }
                 break;
             case ENDER_CRYSTAL:
@@ -939,10 +971,8 @@ public class ResidenceEntityListener implements Listener {
                     return;
                 }
                 perms = FlagPermissions.getPerms(entity.getLocation());
-                if (!perms.has(Flags.explode, perms.has(Flags.destroy, true))) {
-                    shouldDeny = true;
-                    shouldRemove = true;
-                }
+                shouldDeny = !perms.has(Flags.explode, perms.has(Flags.destroy, true));
+                shouldRemove = shouldDeny;
                 break;
             default:
                 // Other entity types
@@ -950,9 +980,7 @@ public class ResidenceEntityListener implements Listener {
                     return;
                 }
                 perms = FlagPermissions.getPerms(entity.getLocation());
-                if (!perms.has(Flags.explode, perms.has(Flags.destroy, true))) {
-                    shouldDeny = true;
-                }
+                shouldDeny = !perms.has(Flags.explode, perms.has(Flags.destroy, true));
                 break;
             }
         }
@@ -968,8 +996,9 @@ public class ResidenceEntityListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onEntityExplode(EntityExplodeEvent event) {
+        Entity entity = event.getEntity();
         // disabling event on world
-        if (plugin.isDisabledWorldListener(event.getEntity())) {
+        if (plugin.isDisabledWorldListener(entity)) {
             return;
         }
         // ExplosionResult.TRIGGER_BLOCK does not destroy blocks
@@ -979,19 +1008,22 @@ public class ResidenceEntityListener implements Listener {
             ResidenceListener1_21.onWindExplode(event);
             return;
         }
-        FlagPermissions perms;
+        ClaimedResidence targetRes = null;
+        ClaimedResidence originRes = null;
+        boolean hasOrigin = false;
+        boolean originChecked = false;
+
+        FlagPermissions perms = null;
         Location loc = event.getLocation();
         boolean shouldDeny = false;
 
-        CMIEntityType type = CMIEntityType.get(event.getEntityType());
+        CMIEntityType type = CMIEntityType.get(entity.getType());
         // Explosion is prohibited at the source location; cancel the event directly
         if (type == null) {
             // Unknown entity type fallback
             if (Flags.explode.isGlobalyEnabled()) {
                 perms = FlagPermissions.getPerms(loc);
-                if (!perms.has(Flags.explode, perms.has(Flags.destroy, true))) {
-                    shouldDeny = true;
-                }
+                shouldDeny = !perms.has(Flags.explode, perms.has(Flags.destroy, true));
             }
         } else {
             switch (type) {
@@ -999,23 +1031,30 @@ public class ResidenceEntityListener implements Listener {
                 if (!Flags.creeper.isGlobalyEnabled()) {
                     break;
                 }
-                perms = FlagPermissions.getPerms(loc);
-                if (!perms.has(Flags.creeper, perms.has(Flags.explode, true))) {
-                    shouldDeny = !plugin.getConfigManager().isCreeperExplodeBelow()
-                            || loc.getBlockY() >= plugin.getConfigManager().getCreeperExplodeBelowLevel()
-                            || ClaimedResidence.getByLoc(loc) != null;
-                }
+                targetRes = ClaimedResidence.getByLoc(loc);
+                perms = FlagPermissions.getResOrWorldPerms(targetRes, loc);
+                shouldDeny = !perms.has(Flags.creeper, perms.has(Flags.explode, true))
+                        && (targetRes != null || !plugin.getConfigManager().isCreeperExplodeBelow()
+                        || loc.getBlockY() >= plugin.getConfigManager().getCreeperExplodeBelowLevel());
                 break;
             case TNT:
             case TNT_MINECART:
                 if (!Flags.tnt.isGlobalyEnabled()) {
                     break;
                 }
-                perms = FlagPermissions.getPerms(loc);
+                targetRes = ClaimedResidence.getByLoc(loc);
+                perms = FlagPermissions.getResOrWorldPerms(targetRes, loc);
+
                 if (!perms.has(Flags.tnt, perms.has(Flags.explode, true))) {
-                    shouldDeny = !plugin.getConfigManager().isTNTExplodeBelow()
-                            || loc.getBlockY() >= plugin.getConfigManager().getTNTExplodeBelowLevel()
-                            || ClaimedResidence.getByLoc(loc) != null;
+                    shouldDeny = targetRes != null || !plugin.getConfigManager().isTNTExplodeBelow()
+                            || loc.getBlockY() >= plugin.getConfigManager().getTNTExplodeBelowLevel();
+
+                } else if (shouldCheckOrigin(targetRes, perms)) {
+                    Location origin = Utils.getSpawnLocation(entity);
+                    originChecked = true;
+                    hasOrigin = origin != null;
+                    originRes = hasOrigin ? ClaimedResidence.getByLoc(origin) : null;
+                    shouldDeny = shouldDenyExternalOriginBreak(targetRes, perms, originRes, hasOrigin);
                 }
                 break;
             case FIREBALL:
@@ -1024,19 +1063,26 @@ public class ResidenceEntityListener implements Listener {
                     break;
                 }
                 perms = FlagPermissions.getPerms(loc);
-                if ((Flags.explode.isGlobalyEnabled() && !perms.has(Flags.explode, true))
-                        || (Flags.fireball.isGlobalyEnabled() && !perms.has(Flags.fireball, true))) {
-                    shouldDeny = true;
-                }
+                shouldDeny = (Flags.explode.isGlobalyEnabled() && !perms.has(Flags.explode, true))
+                        || (Flags.fireball.isGlobalyEnabled() && !perms.has(Flags.fireball, true));
                 break;
             case WITHER:
             case WITHER_SKULL:
                 if (!Flags.explode.isGlobalyEnabled()) {
                     break;
                 }
-                perms = FlagPermissions.getPerms(loc);
+                targetRes = ClaimedResidence.getByLoc(loc);
+                perms = FlagPermissions.getResOrWorldPerms(targetRes, loc);
+
                 if (!perms.has(Flags.explode, perms.has(Flags.witherdestruction, true))) {
                     shouldDeny = true;
+
+                } else if (shouldCheckOrigin(targetRes, perms)) {
+                    Location origin = Utils.getSpawnLocation(entity);
+                    originChecked = true;
+                    hasOrigin = origin != null;
+                    originRes = hasOrigin ? ClaimedResidence.getByLoc(origin) : null;
+                    shouldDeny = shouldDenyExternalOriginBreak(targetRes, perms, originRes, hasOrigin);
                 }
                 break;
             case ENDER_DRAGON:
@@ -1044,9 +1090,7 @@ public class ResidenceEntityListener implements Listener {
                     break;
                 }
                 perms = FlagPermissions.getPerms(loc);
-                if (!perms.has(Flags.dragongrief, true)) {
-                    shouldDeny = true;
-                }
+                shouldDeny = !perms.has(Flags.dragongrief, true);
                 break;
             default:
                 // Other entity types
@@ -1054,9 +1098,7 @@ public class ResidenceEntityListener implements Listener {
                     break;
                 }
                 perms = FlagPermissions.getPerms(loc);
-                if (!perms.has(Flags.explode, perms.has(Flags.destroy, true))) {
-                    shouldDeny = true;
-                }
+                shouldDeny = !perms.has(Flags.explode, perms.has(Flags.destroy, true));
                 break;
             }
         }
@@ -1065,10 +1107,27 @@ public class ResidenceEntityListener implements Listener {
             return;
         }
         // Source allows explosion, so check each affected block for destruction
-        handleEntityExplodeBreakBlock(event.blockList(), type);
+        if (type != null && !originChecked && enabledCheckOrigin()) {
+            switch (type) {
+            case TNT:
+            case TNT_MINECART:
+            case WITHER:
+            case WITHER_SKULL:
+                if (targetRes == null) {
+                    targetRes = ClaimedResidence.getByLoc(loc);
+                }
+                if (shouldCheckOrigin(targetRes, perms)) {
+                    Location origin = Utils.getSpawnLocation(entity);
+                    hasOrigin = origin != null;
+                    originRes = hasOrigin ? ClaimedResidence.getByLoc(origin) : null;
+                }
+                break;
+            }
+        }
+        handleEntityExplodeBreakBlock(event.blockList(), type, originRes, hasOrigin);
     }
 
-    private void handleEntityExplodeBreakBlock(List<Block> blocks, CMIEntityType type) {
+    private void handleEntityExplodeBreakBlock(List<Block> blocks, CMIEntityType type, ClaimedResidence originRes, boolean hasOrigin) {
         // Unknown entity type fallback
         if (type == null) {
             if (!Flags.destroy.isGlobalyEnabled() && !Flags.explode.isGlobalyEnabled()) {
@@ -1087,12 +1146,12 @@ public class ResidenceEntityListener implements Listener {
                 return;
             }
             blocks.removeIf(block -> {
-                Location blockLoc = block.getLocation();
-                FlagPermissions perms = FlagPermissions.getPerms(blockLoc);
+                ClaimedResidence targetRes = ClaimedResidence.getByLoc(block.getLocation());
+                FlagPermissions perms = FlagPermissions.getResOrWorldPerms(targetRes, block);
+
                 return !perms.has(Flags.creeper, perms.has(Flags.explode, true))
-                        && (!plugin.getConfigManager().isCreeperExplodeBelow()
-                        || block.getY() >= plugin.getConfigManager().getCreeperExplodeBelowLevel()
-                        || ClaimedResidence.getByLoc(blockLoc) != null);
+                        && (targetRes != null || !plugin.getConfigManager().isCreeperExplodeBelow()
+                        || block.getY() >= plugin.getConfigManager().getCreeperExplodeBelowLevel());
             });
             return;
         case TNT:
@@ -1101,12 +1160,14 @@ public class ResidenceEntityListener implements Listener {
                 return;
             }
             blocks.removeIf(block -> {
-                Location blockLoc = block.getLocation();
-                FlagPermissions perms = FlagPermissions.getPerms(blockLoc);
-                return !perms.has(Flags.tnt, perms.has(Flags.explode, true))
-                        && (!plugin.getConfigManager().isTNTExplodeBelow()
-                        || block.getY() >= plugin.getConfigManager().getTNTExplodeBelowLevel()
-                        || ClaimedResidence.getByLoc(blockLoc) != null);
+                ClaimedResidence targetRes = ClaimedResidence.getByLoc(block.getLocation());
+                FlagPermissions perms = FlagPermissions.getResOrWorldPerms(targetRes, block);
+
+                if (!perms.has(Flags.tnt, perms.has(Flags.explode, true))) {
+                    return targetRes != null || !plugin.getConfigManager().isTNTExplodeBelow()
+                            || block.getY() >= plugin.getConfigManager().getTNTExplodeBelowLevel();
+                }
+                return targetRes != null && shouldDenyExternalOriginBreak(targetRes, perms, originRes, hasOrigin);
             });
             return;
         case FIREBALL:
@@ -1126,9 +1187,14 @@ public class ResidenceEntityListener implements Listener {
                 return;
             }
             blocks.removeIf(block -> {
-                FlagPermissions perms = FlagPermissions.getPerms(block.getLocation());
-                return (Flags.witherdestruction.isGlobalyEnabled() && !perms.has(Flags.witherdestruction, perms.has(Flags.destroy, true)))
-                        || (Flags.explode.isGlobalyEnabled() && !perms.has(Flags.explode, true));
+                ClaimedResidence targetRes = ClaimedResidence.getByLoc(block.getLocation());
+                FlagPermissions perms = FlagPermissions.getResOrWorldPerms(targetRes, block);
+
+                if ((Flags.witherdestruction.isGlobalyEnabled() && !perms.has(Flags.witherdestruction, perms.has(Flags.destroy, true)))
+                        || (Flags.explode.isGlobalyEnabled() && !perms.has(Flags.explode, true))) {
+                    return true;
+                }
+                return targetRes != null && shouldDenyExternalOriginBreak(targetRes, perms, originRes, hasOrigin);
             });
             return;
         case ENDER_DRAGON:
@@ -1152,6 +1218,45 @@ public class ResidenceEntityListener implements Listener {
             });
             return;
         }
+    }
+
+    private static final boolean isPaperAtLeast1_9_4 = Version.isPaperBranch() && Version.isCurrentEqualOrHigher(Version.v1_9_4);
+
+    private static boolean enabledCheckOrigin() {
+        return isPaperAtLeast1_9_4 && Flags.entityorigin.isGlobalyEnabled();
+    }
+
+    public static boolean shouldCheckOrigin(@Nullable ClaimedResidence targetRes, @Nullable FlagPermissions targetPerms) {
+        if (targetRes == null || !enabledCheckOrigin()) {
+            return false;
+        }
+        if (targetPerms == null) {
+            targetPerms = targetRes.getPermissions();
+        }
+        return targetPerms.has(Flags.entityorigin, true);
+    }
+
+    public static boolean shouldDenyExternalOrigin(@NotNull ClaimedResidence targetRes, @Nullable FlagPermissions targetPerms,
+                                                   @Nullable ClaimedResidence originRes, boolean hasOrigin,
+                                                   @NotNull Flags mainFlag, @Nullable Flags subFlags) {
+        // Skip check if entity has no origin
+        if (!hasOrigin) {
+            return false;
+        }
+        // Skip check if entity origin and target Residence share the same owner
+        if (originRes != null && (originRes == targetRes || originRes.isOwner(targetRes.getOwner()))) {
+            return false;
+        }
+        if (targetPerms == null) {
+            targetPerms = targetRes.getPermissions();
+        }
+        boolean result = (subFlags == null || targetPerms.has(subFlags, true));
+        return !targetPerms.has(mainFlag, result);
+    }
+
+    private static boolean shouldDenyExternalOriginBreak(@NotNull ClaimedResidence targetRes, @Nullable FlagPermissions targetPerms,
+                                                         @Nullable ClaimedResidence originRes, boolean hasOrigin) {
+        return shouldDenyExternalOrigin(targetRes, targetPerms, originRes, hasOrigin, Flags.destroy, Flags.build);
     }
 
     // Various zombies break the door
